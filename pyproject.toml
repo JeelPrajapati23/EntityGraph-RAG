@@ -1,0 +1,15 @@
+[project]
+name = "entitygraph-rag"
+version = "0.1.0"
+description = "Hybrid retrieval engine combining vector search with graph traversal for multi-hop QA over document collections"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+entitygraph-rag = "entitygraph_rag:main"
+
+[build-system]
+requires = ["uv_build>=0.12.17,<0.13.0"]
+build-backend = "uv_build"
