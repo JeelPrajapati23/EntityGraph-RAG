@@ -3,12 +3,11 @@
 # Sector choice: semiconductors + their major automotive/consumer-electronics
 # customers. This pairing exists specifically because real, well-documented
 # SUPPLIES / COMPETES_WITH / EXECUTIVE_OF edges exist between these
-# companies today — the graph isn't synthetic. See entitygraph-rag-plan.md,
-# Phase 0.
+# companies today — the graph isn't synthetic. See docs/dataset.md.
 #
 # All 20 companies below file with SEC EDGAR (domestic 10-K/10-Q/8-K filers,
 # or foreign private issuers filing 20-F/6-K — see the `filer_type` field).
-# CIK numbers are resolved at ingestion time (Phase 1) from EDGAR's
+# CIK numbers are resolved at ingestion time from EDGAR's
 # company_tickers.json rather than hardcoded here.
 
 companies:

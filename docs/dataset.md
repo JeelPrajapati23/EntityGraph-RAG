@@ -1,4 +1,4 @@
-# Dataset notes (Phase 0)
+# Dataset notes
 
 ## Company universe
 
@@ -14,17 +14,17 @@ Chosen as a single sector pairing (not 20 unrelated companies) because real
 them — e.g. TSMC fabricates chips for NVIDIA, AMD, and Apple; Qualcomm
 supplies modems to Apple; NVIDIA and Intel/AMD/Qualcomm compete directly.
 That density is what makes multi-hop questions ("who fabricates chips for
-both NVIDIA and Apple?") answerable and gives Phase 6's golden-set questions
-something non-trivial to traverse.
+both NVIDIA and Apple?") answerable and gives the eventual golden-set
+questions something non-trivial to traverse.
 
 ## Filing types & a schema nuance
 
-The plan's default is 10-K / 10-Q / 8-K. Three companies here are **foreign
-private issuers** (TSMC, ASML, STMicroelectronics) plus one more (Sony) —
-they file **20-F** (annual, in place of 10-K) and **6-K** (in place of
-8-K/10-Q) instead. Tracked via the `filer_type` field in
-`config/companies.yaml` so the Phase 1 EDGAR downloader can branch on it
-per company rather than assuming one filing-type set for all 20.
+The default filing set is 10-K / 10-Q / 8-K. Three companies here are
+**foreign private issuers** (TSMC, ASML, STMicroelectronics) plus one more
+(Sony) — they file **20-F** (annual, in place of 10-K) and **6-K** (in place
+of 8-K/10-Q) instead. Tracked via the `filer_type` field in
+`config/companies.yaml` so the EDGAR downloader can branch on it per company
+rather than assuming one filing-type set for all 20.
 
 ## Data acquisition
 
@@ -44,7 +44,7 @@ data, not source):
 
 Both write a `manifest.jsonl` alongside the downloaded files — `doc_id`,
 `ticker`/`cik`, `filing_date`/date, `source_url`/`source`, `local_path` —
-which is what Phase 1 ingestion will read to build chunk provenance.
+which is what the ingestion pipeline will read to build chunk provenance.
 
 **Coverage gap:** the transcript dataset only covers S&P 500 constituents,
 so TSM/ASML/STM (foreign private issuers, not S&P 500 members) have no

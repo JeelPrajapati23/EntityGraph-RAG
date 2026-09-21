@@ -1,10 +1,10 @@
 # EntityGraph-RAG entity/relation schema — v1
 #
-# This is the fixed vocabulary the extraction pipeline (Phase 2) is
-# constrained to. The LLM extraction prompt is built from this file, and the
-# Pydantic Triple model's Literal types are generated from it, so labels are
-# never invented ad hoc at extraction time — that's what makes extraction
-# quality evaluable later (Phase 6).
+# This is the fixed vocabulary the extraction pipeline is constrained to.
+# The LLM extraction prompt is built from this file, and the Pydantic
+# Triple model's Literal types are generated from it, so labels are never
+# invented ad hoc at extraction time — that's what makes extraction quality
+# evaluable later.
 #
 # Retargeting to a new domain (legal contracts, supply-chain docs, etc.)
 # means writing a new version of this file, not changing the pipeline code.
@@ -98,7 +98,7 @@ edge_types:
       fallback so extraction isn't forced into a wrong typed relation.
 
 # Properties every edge instance carries, regardless of type — this is what
-# gives every graph edge full provenance back to source text (Phase 3).
+# gives every graph edge full provenance back to source text.
 edge_properties:
   - source_chunk_id
   - source_doc_id
