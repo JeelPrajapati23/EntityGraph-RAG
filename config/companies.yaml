@@ -1,0 +1,115 @@
+# Curated company universe for the demo corpus.
+#
+# Sector choice: semiconductors + their major automotive/consumer-electronics
+# customers. This pairing exists specifically because real, well-documented
+# SUPPLIES / COMPETES_WITH / EXECUTIVE_OF edges exist between these
+# companies today — the graph isn't synthetic. See entitygraph-rag-plan.md,
+# Phase 0.
+#
+# All 20 companies below file with SEC EDGAR (domestic 10-K/10-Q/8-K filers,
+# or foreign private issuers filing 20-F/6-K — see the `filer_type` field).
+# CIK numbers are resolved at ingestion time (Phase 1) from EDGAR's
+# company_tickers.json rather than hardcoded here.
+
+companies:
+  # --- Semiconductor suppliers / fabs -------------------------------------
+  - name: NVIDIA Corporation
+    ticker: NVDA
+    sector: semiconductors
+    filer_type: domestic       # 10-K / 10-Q / 8-K
+
+  - name: Taiwan Semiconductor Manufacturing Company Limited
+    ticker: TSM
+    sector: semiconductors
+    filer_type: foreign_private_issuer   # 20-F / 6-K
+
+  - name: Intel Corporation
+    ticker: INTC
+    sector: semiconductors
+    filer_type: domestic
+
+  - name: Advanced Micro Devices, Inc.
+    ticker: AMD
+    sector: semiconductors
+    filer_type: domestic
+
+  - name: Qualcomm Incorporated
+    ticker: QCOM
+    sector: semiconductors
+    filer_type: domestic
+
+  - name: Texas Instruments Incorporated
+    ticker: TXN
+    sector: semiconductors
+    filer_type: domestic
+
+  - name: Broadcom Inc.
+    ticker: AVGO
+    sector: semiconductors
+    filer_type: domestic
+
+  - name: Micron Technology, Inc.
+    ticker: MU
+    sector: semiconductors
+    filer_type: domestic
+
+  - name: ASML Holding N.V.
+    ticker: ASML
+    sector: semiconductors
+    filer_type: foreign_private_issuer
+
+  - name: STMicroelectronics N.V.
+    ticker: STM
+    sector: semiconductors
+    filer_type: foreign_private_issuer
+
+  # --- Automotive / consumer-electronics customers ------------------------
+  - name: Apple Inc.
+    ticker: AAPL
+    sector: consumer_electronics
+    filer_type: domestic
+
+  - name: Tesla, Inc.
+    ticker: TSLA
+    sector: automotive
+    filer_type: domestic
+
+  - name: Ford Motor Company
+    ticker: F
+    sector: automotive
+    filer_type: domestic
+
+  - name: General Motors Company
+    ticker: GM
+    sector: automotive
+    filer_type: domestic
+
+  - name: Alphabet Inc.
+    ticker: GOOGL
+    sector: consumer_electronics   # Pixel hardware, Tensor/TPU chips
+    filer_type: domestic
+
+  - name: Sony Group Corporation
+    ticker: SONY
+    sector: consumer_electronics
+    filer_type: foreign_private_issuer
+
+  - name: Dell Technologies Inc.
+    ticker: DELL
+    sector: consumer_electronics
+    filer_type: domestic
+
+  - name: HP Inc.
+    ticker: HPQ
+    sector: consumer_electronics
+    filer_type: domestic
+
+  - name: Cisco Systems, Inc.
+    ticker: CSCO
+    sector: networking
+    filer_type: domestic
+
+  - name: Amazon.com, Inc.
+    ticker: AMZN
+    sector: consumer_electronics   # AWS Trainium/Inferentia, Kindle/Echo hardware
+    filer_type: domestic
