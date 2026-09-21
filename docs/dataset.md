@@ -26,15 +26,36 @@ they file **20-F** (annual, in place of 10-K) and **6-K** (in place of
 `config/companies.yaml` so the Phase 1 EDGAR downloader can branch on it
 per company rather than assuming one filing-type set for all 20.
 
-## Still open (resolved in Phase 1, not blocking the schema)
+## Data acquisition
 
-- **CIK numbers** — resolved at ingestion time from EDGAR's
-  `company_tickers.json` rather than hardcoded, so the config file doesn't
-  go stale.
-- **Earnings-call transcript source** — plan suggests a public
-  Hugging Face/Kaggle dataset or a small scraped sample; source will be
-  picked and documented when the ingestion pipeline is built (Phase 1),
-  with terms-of-use checked before anything is committed/distributed.
+Two scripts pull the raw corpus into `data/raw/` (gitignored — acquired
+data, not source):
+
+- **`scripts/fetch_edgar_filings.py`** — resolves CIKs from EDGAR's
+  `company_tickers.json`, then pulls each company's most recent filings via
+  `data.sec.gov/submissions/`, branching on `filer_type` per company. Sends
+  a descriptive `User-Agent` with a contact email, per SEC's fair-access
+  policy, and rate-limits itself well under SEC's 10 req/sec cap.
+- **`scripts/fetch_transcripts.py`** — pulls earnings-call transcripts from
+  **`Bose345/sp500_earnings_transcripts`** on Hugging Face (MIT licensed,
+  "research and educational use," speaker-segmented, 2005-2025). Queries
+  the dataset-viewer's `/filter` API server-side (rather than downloading
+  the ~1GB parquet file) so only matching rows cross the wire.
+
+Both write a `manifest.jsonl` alongside the downloaded files — `doc_id`,
+`ticker`/`cik`, `filing_date`/date, `source_url`/`source`, `local_path` —
+which is what Phase 1 ingestion will read to build chunk provenance.
+
+**Coverage gap:** the transcript dataset only covers S&P 500 constituents,
+so TSM/ASML/STM (foreign private issuers, not S&P 500 members) have no
+transcripts — filings-only for those three.
+
+**Caveat worth naming:** transcript text carries each company's own
+copyright/reproduction notice (e.g. "The content of today's call is
+NVIDIA's property..."). The dataset's MIT license covers the uploader's
+compilation, not necessarily the underlying call content. Fine for
+research/educational, non-redistributed use here — flagged so it's a
+documented, deliberate choice rather than an oversight.
 
 ## Schema
 

@@ -19,7 +19,7 @@ retrieval instead of pure vector search).
 Early scaffolding. Follow along in the commit history — this project is being
 built incrementally, phase by phase:
 
-- [ ] Phase 0 — Dataset & schema design
+- [x] Phase 0 — Dataset & schema design
 - [ ] Phase 1 — Ingestion pipeline
 - [ ] Phase 2 — Entity & relation extraction
 - [ ] Phase 3 — Graph construction & storage
