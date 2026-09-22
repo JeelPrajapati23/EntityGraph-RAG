@@ -18,7 +18,8 @@ from ..llm_client import build_client
 from ..retrieval import VectorIndex, build_embedding_client
 from ..router import EntityLookup
 
-DEFAULT_PROCESSED_DIR = Path(__file__).resolve().parents[3] / "data" / "processed"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+DEFAULT_PROCESSED_DIR = REPO_ROOT / "data" / "processed"
 
 
 @dataclass

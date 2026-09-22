@@ -10,6 +10,9 @@ Endpoints:
     GET  /health           graph/corpus sizes
     POST /query            routed, cited answer + the subgraph it traversed
     GET  /graph/explore    ego-subgraph around a named entity
+    POST /ingest           start a background rebuild of every artifact (202 + job id)
+    GET  /ingest           recent ingest jobs, newest first
+    GET  /ingest/{job_id}  one job's status, per-step progress, and log tail
 """
 
 from collections.abc import Callable
@@ -25,6 +28,7 @@ from pydantic import BaseModel, Field, ValidationError
 from ..graph import ego_subgraph
 from ..router import route_query
 from ..synthesis import synthesize_answer
+from .ingest import IngestInProgressError, IngestManager, IngestRequest
 from .resources import Resources, load_resources
 from .views import result_subgraph
 
@@ -36,8 +40,18 @@ class QueryRequest(BaseModel):
     top_k: int = Field(default=5, ge=1, le=20)
 
 
-def create_app(resources: Resources | None = None, loader: Callable[[], Resources] = load_resources) -> FastAPI:
-    """Build the app. Pass `resources` directly (tests) or let startup call `loader`."""
+def create_app(
+    resources: Resources | None = None,
+    loader: Callable[[], Resources] = load_resources,
+    ingest_manager: IngestManager | None = None,
+) -> FastAPI:
+    """Build the app. Pass `resources` directly (tests) or let startup call `loader`.
+
+    A successful ingest job reloads through the same `loader` and swaps
+    app.state.resources in one assignment, so in-flight queries finish on
+    the old artifacts and later ones see the new.
+    """
+    ingest_manager = ingest_manager if ingest_manager is not None else IngestManager(loader)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -102,5 +116,27 @@ def create_app(resources: Resources | None = None, loader: Callable[[], Resource
         if entity_id is None:
             raise HTTPException(status_code=404, detail=f"no known entity matches {entity!r}")
         return {"entity_id": entity_id, **ego_subgraph(res.store, entity_id, depth=depth, max_nodes=max_nodes)}
+
+    @app.post("/ingest", status_code=202)
+    def ingest(body: IngestRequest) -> dict:
+        def swap_resources(new: Resources) -> None:
+            app.state.resources = new
+
+        try:
+            job = ingest_manager.start(body, on_reloaded=swap_resources)
+        except IngestInProgressError as e:
+            raise HTTPException(status_code=409, detail=str(e))
+        return job.to_dict()
+
+    @app.get("/ingest")
+    def ingest_jobs() -> list[dict]:
+        return [job.to_dict() for job in ingest_manager.all_jobs()]
+
+    @app.get("/ingest/{job_id}")
+    def ingest_status(job_id: str) -> dict:
+        job = ingest_manager.get(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail=f"no ingest job {job_id!r}")
+        return job.to_dict()
 
     return app
