@@ -17,10 +17,10 @@ retrieval instead of pure vector search).
 ## Status
 
 Active development — dataset, schema, data acquisition, ingestion/chunking,
-entity/relation extraction, entity resolution, and graph construction
-(NetworkX, behind a swappable GraphStore interface) are in place; the
-hybrid retrieval router and evaluation are next. Follow along in the
-commit history.
+entity/relation extraction, entity resolution, graph construction
+(NetworkX, behind a swappable GraphStore interface), and the semantic
+(vector) retrieval path are in place; the relational/graph-guided hybrid
+router and evaluation are next. Follow along in the commit history.
 
 ## Architecture (evolving)
 
