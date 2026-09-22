@@ -16,11 +16,14 @@ retrieval instead of pure vector search).
 
 ## Status
 
-Active development — dataset, schema, data acquisition, ingestion/chunking,
-entity/relation extraction, entity resolution, graph construction
-(NetworkX, behind a swappable GraphStore interface), and the semantic
-(vector) retrieval path are in place; the relational/graph-guided hybrid
-router and evaluation are next. Follow along in the commit history.
+Active development — the full pipeline from raw documents through a
+queryable hybrid retrieval router is in place: dataset, schema, data
+acquisition, ingestion/chunking, entity/relation extraction, entity
+resolution, graph construction (NetworkX, behind a swappable GraphStore
+interface), semantic (vector) retrieval, and a router that classifies each
+query as semantic / relational / graph-guided-hybrid and dispatches
+accordingly. Answer synthesis (citations combining chunk text + graph
+paths) and evaluation are next. Follow along in the commit history.
 
 ## Architecture (evolving)
 

@@ -48,6 +48,27 @@ def test_zero_vector_does_not_raise():
     assert results[0][0] == "a"
 
 
+def test_search_subset_restricts_to_candidates():
+    chunk_ids = ["a", "b", "c"]
+    vectors = np.array([[1.0, 0.0], [1.0, 0.0], [1.0, 0.0]])  # all identical direction
+    index = VectorIndex(chunk_ids, vectors)
+
+    results = index.search_subset([1.0, 0.0], {"b", "c"}, top_k=5)
+
+    assert {chunk_id for chunk_id, _ in results} == {"b", "c"}
+
+
+def test_search_subset_empty_candidates_returns_empty():
+    index = VectorIndex(["a", "b"], np.eye(2))
+    assert index.search_subset([1.0, 0.0], set(), top_k=5) == []
+
+
+def test_search_subset_candidates_not_in_index_are_ignored():
+    index = VectorIndex(["a", "b"], np.eye(2))
+    results = index.search_subset([1.0, 0.0], {"a", "nonexistent"}, top_k=5)
+    assert [chunk_id for chunk_id, _ in results] == ["a"]
+
+
 def test_save_and_load_roundtrip(tmp_path):
     chunk_ids = ["a", "b"]
     vectors = np.array([[1.0, 0.0], [0.0, 1.0]])

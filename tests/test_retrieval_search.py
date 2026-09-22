@@ -29,3 +29,13 @@ def test_semantic_search_skips_chunk_ids_missing_from_lookup(monkeypatch):
     results = semantic_search("query", index=INDEX, chunks_by_id=partial_lookup, client=None, top_k=2)
 
     assert [r["chunk_id"] for r in results] == ["a"]
+
+
+def test_semantic_search_respects_candidate_chunk_ids(monkeypatch):
+    monkeypatch.setattr(search_module, "embed_texts", lambda *a, **k: [[1.0, 0.0]])
+
+    results = semantic_search(
+        "query", index=INDEX, chunks_by_id=CHUNKS_BY_ID, client=None, top_k=5, candidate_chunk_ids={"b"}
+    )
+
+    assert [r["chunk_id"] for r in results] == ["b"]

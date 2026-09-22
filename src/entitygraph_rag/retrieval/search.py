@@ -1,4 +1,10 @@
-"""Plain semantic search: embed a query, search the index, return chunk records."""
+"""Semantic search: embed a query, search the index, return chunk records.
+
+candidate_chunk_ids, when given, scopes the search to that subset instead
+of the full index — this is what the graph-guided-hybrid router path uses
+to search only chunks tied to entities the query mentions (see
+router/dispatch.py).
+"""
 
 from google import genai
 
@@ -15,6 +21,7 @@ def semantic_search(
     model_name: str = DEFAULT_EMBEDDING_MODEL,
     output_dimensionality: int = DEFAULT_OUTPUT_DIMENSIONALITY,
     top_k: int = 5,
+    candidate_chunk_ids: set[str] | None = None,
 ) -> list[dict]:
     [query_vector] = embed_texts(
         client,
@@ -24,8 +31,13 @@ def semantic_search(
         output_dimensionality=output_dimensionality,
     )
 
+    if candidate_chunk_ids is not None:
+        hits = index.search_subset(query_vector, candidate_chunk_ids, top_k=top_k)
+    else:
+        hits = index.search(query_vector, top_k=top_k)
+
     results = []
-    for chunk_id, score in index.search(query_vector, top_k=top_k):
+    for chunk_id, score in hits:
         chunk = chunks_by_id.get(chunk_id)
         if chunk is None:
             continue
