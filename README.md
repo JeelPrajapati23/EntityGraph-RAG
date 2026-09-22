@@ -21,9 +21,10 @@ natural-language answer is in place: dataset, schema, data acquisition,
 ingestion/chunking, entity/relation extraction, entity resolution, graph
 construction (NetworkX, behind a swappable GraphStore interface), semantic
 (vector) retrieval, a router that classifies each query as semantic /
-relational / graph-guided-hybrid, and answer synthesis with a structured
-citation block (chunk snippets + readable graph paths). Evaluation is
-next. Follow along in the commit history.
+relational / graph-guided-hybrid, answer synthesis with a structured
+citation block (chunk snippets + readable graph paths), and an evaluation
+framework (golden-set, graph-path precision/recall, router accuracy,
+LLM-judged answer quality). Follow along in the commit history.
 
 ## Architecture (evolving)
 
@@ -46,8 +47,10 @@ environment management.
 uv sync
 ```
 
-Extraction (`scripts/extract_triples.py`) calls the Gemini API — copy
-`.env.example` to `.env` and set `GEMINI_API_KEY`.
+Generation (extraction, router classification, answer synthesis, eval
+judging) runs on Groq (`openai/gpt-oss-120b`), and embeddings run on the
+Hugging Face Inference API (`sentence-transformers/all-MiniLM-L6-v2`) —
+copy `.env.example` to `.env` and set `GROQ_API_KEY` and `HF_TOKEN`.
 
 ## License
 

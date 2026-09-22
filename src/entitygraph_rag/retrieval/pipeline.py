@@ -9,7 +9,7 @@ structured triple extraction, batch cleanly.
 from pathlib import Path
 
 import numpy as np
-from google import genai
+from huggingface_hub import InferenceClient
 
 from . import cache
 from .embeddings import embed_texts
@@ -20,7 +20,7 @@ EMBED_BATCH_SIZE = 100
 def embed_chunks(
     chunks: list[dict],
     *,
-    client: genai.Client,
+    client: InferenceClient,
     model_name: str,
     output_dimensionality: int,
     cache_root: Path,
@@ -47,7 +47,6 @@ def embed_chunks(
             [chunk["text"] for chunk in batch],
             task_type="RETRIEVAL_DOCUMENT",
             model_name=model_name,
-            output_dimensionality=output_dimensionality,
         )
         for chunk, vector in zip(batch, embedded):
             vectors_by_id[chunk["chunk_id"]] = vector

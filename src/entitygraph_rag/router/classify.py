@@ -64,4 +64,7 @@ entities: every entity name mentioned in the query, exactly as written \
 (empty list if none).
 reasoning: one sentence on why you chose this route.
 
-Return only the JSON object matching the schema."""
+Return only a JSON object with exactly these keys: "route" (one of \
+{", ".join(ROUTES)}), "entities" (list of strings), "relation" (one of the \
+relation names above, or null), "graph_pattern" (one of \
+{", ".join(GRAPH_PATTERNS)}, or null), "reasoning" (string)."""

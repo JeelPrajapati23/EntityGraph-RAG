@@ -19,8 +19,8 @@ def triple_model(schema):
     return build_triple_model(schema)
 
 
-def _patch_call_gemini(monkeypatch, raw_json: str):
-    monkeypatch.setattr(pipeline_module, "call_gemini", lambda *args, **kwargs: raw_json)
+def _patch_generate_json(monkeypatch, raw_json: str):
+    monkeypatch.setattr(pipeline_module, "generate_json", lambda *args, **kwargs: raw_json)
 
 
 def test_extract_for_chunk_accepts_valid_triple(monkeypatch, tmp_path, schema, triple_model):
@@ -32,10 +32,10 @@ def test_extract_for_chunk_accepts_valid_triple(monkeypatch, tmp_path, schema, t
             }
         ]
     )
-    _patch_call_gemini(monkeypatch, raw)
+    _patch_generate_json(monkeypatch, raw)
 
     edges, warnings = extract_for_chunk(
-        CHUNK, schema=schema, triple_model=triple_model, client=None, model_name="gemini-2.5-flash",
+        CHUNK, schema=schema, triple_model=triple_model, client=None, model_name="openai/gpt-oss-120b",
         system_prompt="prompt", cache_root=tmp_path,
     )
 
@@ -58,11 +58,11 @@ def test_extract_for_chunk_drops_schema_invalid_triple(monkeypatch, tmp_path, sc
             }
         ]
     )
-    _patch_call_gemini(monkeypatch, raw)
+    _patch_generate_json(monkeypatch, raw)
 
     edges, warnings = extract_for_chunk(
         {**CHUNK, "chunk_id": "ACC2::0::0"}, schema=schema, triple_model=triple_model, client=None,
-        model_name="gemini-2.5-flash", system_prompt="prompt", cache_root=tmp_path,
+        model_name="openai/gpt-oss-120b", system_prompt="prompt", cache_root=tmp_path,
     )
 
     assert edges == []
@@ -71,11 +71,11 @@ def test_extract_for_chunk_drops_schema_invalid_triple(monkeypatch, tmp_path, sc
 
 
 def test_extract_for_chunk_handles_malformed_llm_output(monkeypatch, tmp_path, schema, triple_model):
-    _patch_call_gemini(monkeypatch, "not json at all")
+    _patch_generate_json(monkeypatch, "not json at all")
 
     edges, warnings = extract_for_chunk(
         {**CHUNK, "chunk_id": "ACC3::0::0"}, schema=schema, triple_model=triple_model, client=None,
-        model_name="gemini-2.5-flash", system_prompt="prompt", cache_root=tmp_path,
+        model_name="openai/gpt-oss-120b", system_prompt="prompt", cache_root=tmp_path,
     )
 
     assert edges == []
@@ -94,19 +94,19 @@ def test_extract_for_chunk_uses_cache_on_second_call(monkeypatch, tmp_path, sche
     )
     calls = {"n": 0}
 
-    def fake_call_gemini(*args, **kwargs):
+    def fake_generate_json(*args, **kwargs):
         calls["n"] += 1
         return raw
 
-    monkeypatch.setattr(pipeline_module, "call_gemini", fake_call_gemini)
+    monkeypatch.setattr(pipeline_module, "generate_json", fake_generate_json)
 
     chunk = {**CHUNK, "chunk_id": "ACC4::0::0"}
     first_edges, _ = extract_for_chunk(
-        chunk, schema=schema, triple_model=triple_model, client=None, model_name="gemini-2.5-flash",
+        chunk, schema=schema, triple_model=triple_model, client=None, model_name="openai/gpt-oss-120b",
         system_prompt="prompt", cache_root=tmp_path,
     )
     second_edges, second_warnings = extract_for_chunk(
-        chunk, schema=schema, triple_model=triple_model, client=None, model_name="gemini-2.5-flash",
+        chunk, schema=schema, triple_model=triple_model, client=None, model_name="openai/gpt-oss-120b",
         system_prompt="prompt", cache_root=tmp_path,
     )
 

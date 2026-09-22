@@ -15,10 +15,10 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from entitygraph_rag.extraction.gemini_client import build_client
 from entitygraph_rag.extraction.schema import load_schema
 from entitygraph_rag.graph import NetworkXGraphStore
-from entitygraph_rag.retrieval import VectorIndex
+from entitygraph_rag.llm_client import build_client
+from entitygraph_rag.retrieval import VectorIndex, build_embedding_client
 from entitygraph_rag.router import EntityLookup, route_query
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -53,10 +53,12 @@ def main() -> None:
     entity_lookup = EntityLookup(entities)
     schema = load_schema()
     client = build_client()
+    embedding_client = build_embedding_client()
 
     result = route_query(
         args.query,
         client=client,
+        embedding_client=embedding_client,
         schema=schema,
         store=store,
         index=index,

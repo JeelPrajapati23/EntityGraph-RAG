@@ -12,15 +12,21 @@ CHUNK_B = {
 }
 
 
-class _FakeModels:
-    def generate_content(self, *, model, contents):
-        self.last_prompt = contents
-        return SimpleNamespace(text="This is the synthesized answer.")
+class _FakeCompletions:
+    def create(self, *, model, messages, temperature):
+        self.last_messages = messages
+        message = SimpleNamespace(content="This is the synthesized answer.")
+        return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+
+
+class _FakeChat:
+    def __init__(self):
+        self.completions = _FakeCompletions()
 
 
 class _FakeClient:
     def __init__(self):
-        self.models = _FakeModels()
+        self.chat = _FakeChat()
 
 
 def test_synthesize_answer_semantic_route_uses_direct_chunks():
@@ -33,7 +39,7 @@ def test_synthesize_answer_semantic_route_uses_direct_chunks():
     assert synthesis["route"] == "semantic"
     assert [c["chunk_id"] for c in synthesis["citations"]["chunks"]] == ["d1::0::0"]
     assert synthesis["citations"]["graph_paths"] == []
-    assert "TSMC fabricates chips for NVIDIA." in client.models.last_prompt
+    assert "TSMC fabricates chips for NVIDIA." in client.chat.completions.last_messages[-1]["content"]
 
 
 def test_synthesize_answer_relational_route_pulls_in_provenance_chunks():

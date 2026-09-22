@@ -12,16 +12,22 @@ FAKE_JUDGMENT = {
 }
 
 
-class _FakeModels:
-    def generate_content(self, *, model, contents, config):
-        self.last_prompt = contents
-        self.last_config = config
-        return SimpleNamespace(text=json.dumps(FAKE_JUDGMENT))
+class _FakeCompletions:
+    def create(self, *, model, messages, temperature, response_format):
+        self.last_messages = messages
+        self.last_response_format = response_format
+        message = SimpleNamespace(content=json.dumps(FAKE_JUDGMENT))
+        return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+
+
+class _FakeChat:
+    def __init__(self):
+        self.completions = _FakeCompletions()
 
 
 class _FakeClient:
     def __init__(self):
-        self.models = _FakeModels()
+        self.chat = _FakeChat()
 
 
 def test_build_judge_prompt_includes_question_answer_reference_and_context():
@@ -45,4 +51,4 @@ def test_judge_answer_parses_structured_response():
     assert isinstance(judgment, AnswerJudgment)
     assert judgment.faithfulness == 0.9
     assert judgment.correctness == 1.0
-    assert client.models.last_config.response_schema is AnswerJudgment
+    assert client.chat.completions.last_response_format == {"type": "json_object"}

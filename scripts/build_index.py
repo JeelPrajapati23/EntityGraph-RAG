@@ -1,9 +1,10 @@
 """Embed every chunk and build a searchable vector index.
 
 Reads data/processed/chunks.jsonl (from scripts/build_chunks.py), embeds
-each chunk with Gemini (cached per chunk in .cache/embeddings/, keyed on
-chunk text + model + output dimensionality), and writes the resulting
-index to data/processed/chunk_index.{vectors.npy,ids.json}.
+each chunk via the Hugging Face Inference API (cached per chunk in
+.cache/embeddings/, keyed on chunk text + model + output dimensionality),
+and writes the resulting index to
+data/processed/chunk_index.{vectors.npy,ids.json}.
 
 Usage:
     uv run python scripts/build_index.py [--tickers NVDA,AAPL]
@@ -16,8 +17,13 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from entitygraph_rag.extraction.gemini_client import build_client
-from entitygraph_rag.retrieval import DEFAULT_EMBEDDING_MODEL, DEFAULT_OUTPUT_DIMENSIONALITY, VectorIndex, embed_chunks
+from entitygraph_rag.retrieval import (
+    DEFAULT_EMBEDDING_MODEL,
+    DEFAULT_OUTPUT_DIMENSIONALITY,
+    VectorIndex,
+    build_embedding_client,
+    embed_chunks,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 CHUNKS_PATH = ROOT / "data" / "processed" / "chunks.jsonl"
@@ -61,7 +67,7 @@ def main() -> None:
 
     print(f"Embedding {len(chunks)} chunks with {args.model} ({args.dimensions}-dim)...")
 
-    client = build_client()
+    client = build_embedding_client()
     chunk_ids, vectors = embed_chunks(
         chunks, client=client, model_name=args.model, output_dimensionality=args.dimensions, cache_root=CACHE_ROOT
     )

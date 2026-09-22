@@ -6,19 +6,20 @@ prose answer, not folded into it — callers render it as its own
 inline (see project plan, Phase 5).
 """
 
-from google import genai
+from groq import Groq
 
+from ..llm_client import DEFAULT_MODEL, generate_text
 from .citations import chunk_citation, graph_paths_for_result, graph_provenance_chunk_ids
 from .prompt import build_synthesis_prompt
 
-DEFAULT_SYNTHESIS_MODEL = "gemini-2.5-flash"
+DEFAULT_SYNTHESIS_MODEL = DEFAULT_MODEL
 
 
 def synthesize_answer(
     result: dict,
     *,
     chunks_by_id: dict,
-    client: genai.Client,
+    client: Groq,
     model_name: str = DEFAULT_SYNTHESIS_MODEL,
 ) -> dict:
     query = result["query"]
@@ -35,11 +36,11 @@ def synthesize_answer(
     # The model reasons over full chunk text; chunk_citations' truncated
     # "snippet" is a display preview for the returned citation block only.
     prompt = build_synthesis_prompt(query, chunks=all_chunks, graph_paths=graph_paths)
-    response = client.models.generate_content(model=model_name, contents=prompt)
+    answer = generate_text(client, user_prompt=prompt, model_name=model_name)
 
     return {
         "query": query,
         "route": result["route"],
-        "answer": response.text,
+        "answer": answer,
         "citations": {"chunks": chunk_citations, "graph_paths": graph_paths},
     }

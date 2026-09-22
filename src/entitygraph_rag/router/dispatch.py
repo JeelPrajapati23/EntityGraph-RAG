@@ -10,7 +10,7 @@ are included in every result row here so synthesis never has to re-query
 the graph.
 """
 
-from google import genai
+from huggingface_hub import InferenceClient
 from pydantic import BaseModel
 
 from ..graph import GraphStore, common_neighbors, two_hop_neighbors
@@ -85,7 +85,7 @@ def run_graph_guided_hybrid(
     entity_lookup: EntityLookup,
     index: VectorIndex,
     chunks_by_id: dict,
-    client: genai.Client,
+    embedding_client: InferenceClient,
     top_k: int = 5,
 ) -> dict:
     entity_ids = _resolve_entities(decision, entity_lookup)
@@ -114,7 +114,7 @@ def run_graph_guided_hybrid(
         query,
         index=index,
         chunks_by_id=chunks_by_id,
-        client=client,
+        client=embedding_client,
         top_k=top_k,
         candidate_chunk_ids=candidate_chunk_ids or None,
     )

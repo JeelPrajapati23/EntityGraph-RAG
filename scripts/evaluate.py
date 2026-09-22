@@ -19,10 +19,10 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from entitygraph_rag.evaluation import load_golden_set, run_evaluation
-from entitygraph_rag.extraction.gemini_client import build_client
 from entitygraph_rag.extraction.schema import load_schema
 from entitygraph_rag.graph import NetworkXGraphStore
-from entitygraph_rag.retrieval import VectorIndex
+from entitygraph_rag.llm_client import build_client
+from entitygraph_rag.retrieval import VectorIndex, build_embedding_client
 from entitygraph_rag.router import EntityLookup
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -86,19 +86,21 @@ def main() -> None:
     entity_lookup = EntityLookup(entities)
     schema = load_schema()
     client = build_client()
+    embedding_client = build_embedding_client()
 
     questions = load_golden_set(args.golden_set)
     evaluation = run_evaluation(
-        questions, client=client, schema=schema, store=store, index=index,
+        questions, client=client, embedding_client=embedding_client, schema=schema, store=store, index=index,
         chunks_by_id=chunks_by_id, entity_lookup=entity_lookup, top_k=args.top_k,
     )
 
     print_report(evaluation)
 
     if args.out:
-        args.out.parent.mkdir(parents=True, exist_ok=True)
-        args.out.write_text(json.dumps(evaluation, indent=2), encoding="utf-8")
-        print(f"\nWrote full results to {args.out.relative_to(ROOT).as_posix()}")
+        out_path = args.out if args.out.is_absolute() else ROOT / args.out
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(evaluation, indent=2), encoding="utf-8")
+        print(f"\nWrote full results to {out_path.relative_to(ROOT).as_posix()}")
 
 
 if __name__ == "__main__":

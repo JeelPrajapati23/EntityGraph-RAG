@@ -9,7 +9,8 @@ rows plus a rolled-up summary are returned so scripts/evaluate.py can print
 or persist either without re-deriving them.
 """
 
-from google import genai
+from groq import Groq
+from huggingface_hub import InferenceClient
 
 from ..extraction.schema import Schema
 from ..graph import GraphStore
@@ -33,7 +34,8 @@ def _context_texts(result: dict, chunks_by_id: dict) -> list[str]:
 def evaluate_question(
     question: GoldenQuestion,
     *,
-    client: genai.Client,
+    client: Groq,
+    embedding_client: InferenceClient,
     schema: Schema,
     store: GraphStore,
     index: VectorIndex,
@@ -43,7 +45,7 @@ def evaluate_question(
     judge_model: str = DEFAULT_JUDGE_MODEL,
 ) -> dict:
     result = route_query(
-        question.question, client=client, schema=schema, store=store, index=index,
+        question.question, client=client, embedding_client=embedding_client, schema=schema, store=store, index=index,
         chunks_by_id=chunks_by_id, entity_lookup=entity_lookup, top_k=top_k,
     )
     synthesis = synthesize_answer(result, chunks_by_id=chunks_by_id, client=client)
@@ -75,7 +77,8 @@ def evaluate_question(
 def run_evaluation(
     questions: list[GoldenQuestion],
     *,
-    client: genai.Client,
+    client: Groq,
+    embedding_client: InferenceClient,
     schema: Schema,
     store: GraphStore,
     index: VectorIndex,
@@ -86,8 +89,8 @@ def run_evaluation(
 ) -> dict:
     rows = [
         evaluate_question(
-            q, client=client, schema=schema, store=store, index=index, chunks_by_id=chunks_by_id,
-            entity_lookup=entity_lookup, top_k=top_k, judge_model=judge_model,
+            q, client=client, embedding_client=embedding_client, schema=schema, store=store, index=index,
+            chunks_by_id=chunks_by_id, entity_lookup=entity_lookup, top_k=top_k, judge_model=judge_model,
         )
         for q in questions
     ]

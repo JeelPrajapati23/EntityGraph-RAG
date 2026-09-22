@@ -8,7 +8,7 @@ CHUNKS = [
 ]
 
 
-def _fake_embed_texts(client, texts, *, task_type, model_name, output_dimensionality):
+def _fake_embed_texts(client, texts, *, task_type, model_name):
     # deterministic per-text vector so assertions can check chunk<->vector mapping
     return [[float(len(t)), 0.0] for t in texts]
 

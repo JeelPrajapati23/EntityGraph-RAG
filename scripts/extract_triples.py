@@ -1,7 +1,7 @@
 """Extract typed, source-cited (entity, relation, entity) triples from chunks.
 
 Reads data/processed/chunks.jsonl (from scripts/build_chunks.py), runs each
-chunk through Gemini with structured output constrained to schema/v1.yaml's
+chunk through the LLM with JSON-mode output constrained to schema/v1.yaml's
 vocabulary, validates each returned triple's subject/object type against its
 relation before accepting it, and writes the accepted edges to
 data/processed/triples.jsonl. Results are cached per chunk in .cache/
@@ -20,7 +20,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from entitygraph_rag.extraction import build_client, build_system_prompt, build_triple_model, extract_for_chunk, load_schema
-from entitygraph_rag.extraction.gemini_client import DEFAULT_MODEL
+from entitygraph_rag.llm_client import DEFAULT_MODEL
 
 ROOT = Path(__file__).resolve().parent.parent
 CHUNKS_PATH = ROOT / "data" / "processed" / "chunks.jsonl"

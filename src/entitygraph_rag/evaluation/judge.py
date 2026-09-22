@@ -1,22 +1,23 @@
-"""LLM-judge answer-quality scoring: RAGAS-inspired, hand-rolled against Gemini structured output.
+"""LLM-judge answer-quality scoring: RAGAS-inspired, hand-rolled against Groq JSON mode.
 
 The project plan calls for reusing RAGAS for the vector-retrieval half of
 evaluation, but RAGAS is built around LangChain/OpenAI and would need a
-custom LLM wrapper to run against Gemini — a heavy dependency for what the
-rest of this codebase does with a single structured-output call (see
-router/classify.py, extraction/schema.py). Instead this scores the same
-dimensions by hand: faithfulness, answer relevancy and context precision
-(RAGAS's vector-retrieval trio), plus correctness against the golden
-question's known-correct reference answer (the project plan's "known
-correct answer" requirement) — all four in one judge call per question to
-keep evaluation API cost down.
+custom LLM wrapper to run against this project's LLM provider — a heavy
+dependency for what the rest of this codebase does with a single JSON-mode
+call (see router/classify.py, extraction/schema.py). Instead this scores
+the same dimensions by hand: faithfulness, answer relevancy and context
+precision (RAGAS's vector-retrieval trio), plus correctness against the
+golden question's known-correct reference answer (the project plan's
+"known correct answer" requirement) — all four in one judge call per
+question to keep evaluation API cost down.
 """
 
-from google import genai
-from google.genai import types
+from groq import Groq
 from pydantic import BaseModel
 
-DEFAULT_JUDGE_MODEL = "gemini-2.5-flash"
+from ..llm_client import DEFAULT_MODEL, generate_json
+
+DEFAULT_JUDGE_MODEL = DEFAULT_MODEL
 
 
 class AnswerJudgment(BaseModel):
@@ -52,9 +53,9 @@ System's answer: {answer}
 Retrieved context:
 {context_block}
 
-reasoning: one or two sentences justifying the scores.
-
-Return only the JSON object matching the schema."""
+Return only a JSON object with exactly these keys: "faithfulness" (float), \
+"answer_relevancy" (float), "context_precision" (float), "correctness" \
+(float), "reasoning" (string)."""
 
 
 def judge_answer(
@@ -63,16 +64,10 @@ def judge_answer(
     reference_answer: str,
     context_chunks: list[str],
     *,
-    client: genai.Client,
+    client: Groq,
     model_name: str = DEFAULT_JUDGE_MODEL,
 ) -> AnswerJudgment:
-    response = client.models.generate_content(
-        model=model_name,
-        contents=build_judge_prompt(question, answer, reference_answer, context_chunks),
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=AnswerJudgment,
-            temperature=0.0,
-        ),
+    raw_json = generate_json(
+        client, user_prompt=build_judge_prompt(question, answer, reference_answer, context_chunks), model_name=model_name,
     )
-    return AnswerJudgment.model_validate_json(response.text)
+    return AnswerJudgment.model_validate_json(raw_json)

@@ -13,28 +13,28 @@ Example 1:
 Text: "TSMC is the primary foundry partner fabricating NVIDIA's H100 and \
 Blackwell GPUs on its advanced process nodes."
 Triples:
-[{"subject": "TSMC", "subject_type": "Company", "relation": "SUPPLIES", \
-"object": "NVIDIA", "object_type": "Company", "confidence": 0.95}]
+{"triples": [{"subject": "TSMC", "subject_type": "Company", "relation": \
+"SUPPLIES", "object": "NVIDIA", "object_type": "Company", "confidence": 0.95}]}
 
 Example 2:
 Text: "Jensen Huang has served as President and Chief Executive Officer of \
 NVIDIA since its founding in 1993."
 Triples:
-[{"subject": "Jensen Huang", "subject_type": "Person", "relation": \
-"EXECUTIVE_OF", "object": "NVIDIA", "object_type": "Company", \
-"confidence": 0.98}]
+{"triples": [{"subject": "Jensen Huang", "subject_type": "Person", \
+"relation": "EXECUTIVE_OF", "object": "NVIDIA", "object_type": "Company", \
+"confidence": 0.98}]}
 
 Example 3:
 Text: "Our business faces intense competition from Intel, AMD, and \
 Qualcomm in the markets for GPUs, CPUs, and mobile processors."
 Triples:
-[{"subject": "NVIDIA", "subject_type": "Company", "relation": \
+{"triples": [{"subject": "NVIDIA", "subject_type": "Company", "relation": \
 "COMPETES_WITH", "object": "Intel", "object_type": "Company", \
 "confidence": 0.9}, {"subject": "NVIDIA", "subject_type": "Company", \
 "relation": "COMPETES_WITH", "object": "AMD", "object_type": "Company", \
 "confidence": 0.9}, {"subject": "NVIDIA", "subject_type": "Company", \
 "relation": "COMPETES_WITH", "object": "Qualcomm", "object_type": \
-"Company", "confidence": 0.9}]
+"Company", "confidence": 0.9}]}
 """
 
 
@@ -79,8 +79,8 @@ correctly and precisely stated in the text.
 - If the chunk contains no extractable relations, return an empty list.
 
 {_FEW_SHOT_EXAMPLES}
-Now extract triples from the given chunk. Return only the JSON list of \
-triples, matching the schema exactly."""
+Now extract triples from the given chunk. Return only a JSON object of the \
+form {{"triples": [...]}}, matching the schema exactly."""
 
 
 def build_user_prompt(chunk_text: str) -> str:

@@ -83,7 +83,7 @@ def test_run_graph_guided_hybrid_scopes_chunks_and_expands_entities(monkeypatch)
 
     result = run_graph_guided_hybrid(
         "what does TSMC supply?", decision, store=store, entity_lookup=lookup,
-        index=index, chunks_by_id=chunks_by_id, client=None,
+        index=index, chunks_by_id=chunks_by_id, embedding_client=None,
     )
 
     assert result["route"] == "graph_guided_hybrid"

@@ -1,0 +1,331 @@
+{
+  "rows": [
+    {
+      "id": "sem-01",
+      "question": "What risk does NVIDIA disclose about its reliance on third parties for manufacturing?",
+      "expected_route": "semantic",
+      "actual_route": "semantic",
+      "route_correct": true,
+      "answer": "NVIDIA warns that its heavy reliance on third\u2011party manufacturers, assemblers, packagers and testers \u201ccould limit our ability to realize the expected benefits of the acquisition or have a material impact on our business, operating results and financial condition\u201d\u3010chunk 2\u3011. In other words, dependence on outside suppliers for making its chips creates a risk that production problems or other issues could materially affect the company\u2019s performance.",
+      "graph_paths": [],
+      "path_scores": null,
+      "judgment": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.2,
+        "correctness": 1.0,
+        "reasoning": "The answer correctly states that NVIDIA\u2019s reliance on third\u2011party manufacturers, assemblers, packagers and testers could limit expected benefits or materially impact the business, which is directly supported by chunk\u202f2 of the retrieved context. No other claims are made, so faithfulness is full. The answer directly addresses the question about the disclosed risk, so answer_relevancy is full. Among the five context chunks, only chunk\u202f2 pertains to the manufacturing\u2011reliance risk; the other four discuss export controls, company overview, internal controls, and other risk factors, making the relevance proportion 1/5\u202f=\u202f0.2. The answer\u2019s substance matches the reference answer\u2019s description of the risk, so correctness is full."
+      }
+    },
+    {
+      "id": "sem-02",
+      "question": "What has NVIDIA disclosed about the risk of not realizing the expected benefits of an acquisition?",
+      "expected_route": "semantic",
+      "actual_route": "semantic",
+      "route_correct": true,
+      "answer": "NVIDIA warned that a number of \u201crisk factors\u201d could prevent it from achieving the benefits it expects from an acquisition. In its Form\u202f8\u2011K filing the company states that \u201cany of these risks could limit our ability to realize the expected benefits of the acquisition\u201d and that its \u201cability to realize the potential benefits of business investments or acquisitions\u201d is subject to a wide range of uncertainties\u2014including global economic and political conditions, reliance on third\u2011party manufacturers, technological development and competition, market acceptance of its and its partners\u2019 products, possible product or software defects, changes in consumer preferences or industry standards, and changes in laws and regulations\u202f[chunk\u202f1].",
+      "graph_paths": [],
+      "path_scores": null,
+      "judgment": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.2,
+        "correctness": 1.0,
+        "reasoning": "The answer restates NVIDIA\u2019s disclosure that risk factors could limit its ability to realize the expected benefits of an acquisition, which is directly supported by chunk\u202f[1] of the retrieved context. No additional claims are made beyond what the context provides, so faithfulness is perfect. The answer directly addresses the question, giving a full response, so answer_relevancy is perfect. Of the five context chunks, only chunk\u202f[1] is directly relevant to the specific risk of not realizing expected benefits; the other chunks discuss other aspects of the acquisition or unrelated material, yielding a precision of 1/5\u202f=\u202f0.2. The answer\u2019s substance matches the reference answer, so correctness is perfect."
+      }
+    },
+    {
+      "id": "sem-03",
+      "question": "What did NVIDIA disclose about government restrictions on open-source AI models in connection with its Hugging Face acquisition?",
+      "expected_route": "semantic",
+      "actual_route": "semantic",
+      "route_correct": true,
+      "answer": "NVIDIA warned that, as part of the Hugging\u202fFace acquisition, \u201cgovernment restrictions may negatively impact our business and the Hugging\u202fFace platform.\u201d  It noted that lawmakers and regulators in the United States and elsewhere are pushing for rules that could **restrict or disadvantage open\u2011source models** and their users.  Such rules could impose new or additional requirements on the **development, training, release, distribution, access, transfer, deployment or use of AI models\u2014including open\u2011source models**.  The company said these requirements could **limit the models or datasets available through Hugging\u202fFace, force changes to the platform or its practices, delay or restrict offerings, raise compliance costs, or trigger investigations or enforcement actions**, all of which could have a material impact on the platform and NVIDIA\u2019s own results\u3010chunk\u202f1\u3011.",
+      "graph_paths": [],
+      "path_scores": null,
+      "judgment": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.2,
+        "correctness": 1.0,
+        "reasoning": "The system answer restates the disclosure that governments may impose new requirements affecting open\u2011source AI models, which could limit models on Hugging\u202fFace, force platform changes, cause delays, raise compliance costs, or trigger enforcement actions. All of these points are directly supported by chunk\u202f1 of the retrieved context and match the reference answer, so faithfulness, relevancy, and correctness are each perfect. Only chunk\u202f1 of the five provided context pieces is relevant to the question, giving a context precision of 1/5 = 0.2."
+      }
+    },
+    {
+      "id": "sem-04",
+      "question": "What risk does NVIDIA disclose about changes in industry standards and interfaces?",
+      "expected_route": "semantic",
+      "actual_route": "semantic",
+      "route_correct": true,
+      "answer": "NVIDIA warns that **changes in industry standards and interfaces** are a risk factor that could \u201climit our ability to realize the expected benefits of the acquisition or have a material impact on our business, operating results and financial condition\u201d\u202f[chunk\u202f1].",
+      "graph_paths": [],
+      "path_scores": null,
+      "judgment": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.2,
+        "correctness": 1.0,
+        "reasoning": "The answer\u2019s claim that changes in industry standards and interfaces are a risk that could limit acquisition benefits or materially impact the business is directly quoted from chunk\u202f1, so it is fully faithful and correct relative to the reference answer. It directly answers the asked question, giving it full relevancy. Among the five retrieved chunks, only chunk\u202f1 pertains to the specific risk; the other four discuss unrelated topics, yielding a precision of 1/5\u202f=\u202f0.2. The answer aligns with the reference statement, so correctness is 1.0."
+      }
+    },
+    {
+      "id": "rel-01",
+      "question": "Which company has NVIDIA Corporation invested in?",
+      "expected_route": "relational",
+      "actual_route": "relational",
+      "route_correct": true,
+      "answer": "NVIDIA Corporation has invested in **Hugging Face**\u3010graph relation: NVIDIA Corporation\u202f--INVESTED_IN-->\u202fHugging Face\u3011. This is also reflected in the filing describing NVIDIA\u2019s definitive agreement to acquire Hugging Face, Inc.\u3010chunk 2\u3011.",
+      "graph_paths": [
+        "NVIDIA Corporation --INVESTED_IN--> Hugging Face"
+      ],
+      "path_scores": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "matched": [
+          "NVIDIA Corporation --INVESTED_IN--> Hugging Face"
+        ],
+        "missing": [],
+        "extra": []
+      },
+      "judgment": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "correctness": 1.0,
+        "reasoning": "The system answer states that NVIDIA invested in Hugging Face and cites chunk\u202f2, which explicitly says NVIDIA entered a definitive agreement to acquire Hugging Face, Inc. Chunk\u202f1 also references the proposed acquisition. Both claims are directly supported by the retrieved context, making the answer fully faithful. The answer directly answers the question about which company NVIDIA invested in, so it is fully relevant. Both context chunks are about NVIDIA\u2019s acquisition of Hugging Face, thus they are entirely relevant, giving perfect context precision. Finally, the answer matches the reference answer that NVIDIA has invested in (agreed to acquire) Hugging Face, so correctness is perfect."
+      }
+    },
+    {
+      "id": "rel-02",
+      "question": "Who is an executive of NVIDIA Corporation?",
+      "expected_route": "relational",
+      "actual_route": "relational",
+      "route_correct": true,
+      "answer": "Colette\u202fM.\u202fKress is an executive of NVIDIA\u202fCorporation\u3010chunk 1\u3011. The graph also shows that Colette\u202fM.\u202fKress holds an EXECUTIVE_OF relationship with NVIDIA\u202fCorporation.",
+      "graph_paths": [
+        "Colette M. Kress --EXECUTIVE_OF--> NVIDIA Corporation"
+      ],
+      "path_scores": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "matched": [
+          "Colette M. Kress --EXECUTIVE_OF--> NVIDIA Corporation"
+        ],
+        "missing": [],
+        "extra": []
+      },
+      "judgment": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "correctness": 1.0,
+        "reasoning": "The system answer correctly identifies Colette M. Kress as an executive of NVIDIA Corporation, which is directly supported by the retrieved context showing her title as Executive Vice President and CFO. The answer directly addresses the question, the only provided context chunk is relevant, and the answer matches the known correct reference."
+      }
+    },
+    {
+      "id": "rel-03",
+      "question": "What risk factors has NVIDIA Corporation disclosed?",
+      "expected_route": "relational",
+      "actual_route": "relational",
+      "route_correct": true,
+      "answer": "**Risk factors disclosed by NVIDIA\u202fCorporation**\n\n| Disclosed risk factor | Source |\n|-----------------------|--------|\n| Global economic and political conditions | \u3010chunk\u202f1\u3011 |\n| Reliance on third parties to manufacture, assemble, package and test NVIDIA\u2019s products | \u3010chunk\u202f1\u3011 |\n| Impact of technological development and competition | \u3010chunk\u202f1\u3011 |\n| Development of new products and technologies (or enhancements to existing products) | \u3010chunk\u202f1\u3011 |\n| Market acceptance of NVIDIA\u2019s products or its partners\u2019 products | \u3010chunk\u202f1\u3011 |\n| Design, manufacturing or software defects | \u3010chunk\u202f1\u3011 |\n| Changes in consumer preferences or demands | \u3010chunk\u202f1\u3011 |\n| Changes in industry standards and interfaces | \u3010chunk\u202f1\u3011 |\n| Unexpected loss of performance of NVIDIA\u2019s products or technologies when integrated into systems | \u3010chunk\u202f1\u3011 |\n| Ability to realize the potential benefits of business investments or acquisitions | \u3010chunk\u202f1\u3011 |\n| Changes in applicable laws and regulations | \u3010chunk\u202f1\u3011 |\n| Government restrictions on open\u2011source models (including those affecting the Hugging\u202fFace acquisition) | \u3010chunk\u202f2\u3011; also reflected in the graph relation **NVIDIA Corporation\u202f--DISCLOSED_RISK-->\u202fGovernment restrictions on open\u2011source models** |\n| Global economic and political conditions (re\u2011listed in the graph) | **NVIDIA Corporation\u202f--DISCLOSED_RISK-->\u202fGlobal economic and political conditions** |\n| Reliance on third parties for manufacturing (re\u2011listed in the graph) | **NVIDIA Corporation\u202f--DISCLOSED_RISK-->\u202fReliance on third parties for manufacturing** |\n| Impact of technological development and competition (re\u2011listed in the graph) | **NVIDIA Corporation\u202f--DISCLOSED_RISK-->\u202fImpact of technological development and competition** |\n| Development of new products and technologies (re\u2011listed in the graph) | **NVIDIA Corporation\u202f--DISCLOSED_RISK-->\u202fDevelopment of new products and technologies** |\n| Market acceptance of products (re\u2011listed in the graph) | **NVIDIA Corporation\u202f--DISCLOSED_RISK-->\u202fMarket acceptance of products** |\n| Design, manufacturing or software defects (re\u2011listed in the graph) | **NVIDIA Corporation\u202f--DISCLOSED_RISK-->\u202fDesign, manufacturing or software defects** |\n| Changes in consumer preferences or demands (re\u2011listed in the graph) | **NVIDIA Corporation\u202f--DISCLOSED_RISK-->\u202fChanges in consumer preferences or demands** |\n| Changes in industry standards and interfaces (re\u2011listed in the graph) | **NVIDIA Corporation\u202f--DISCLOSED_RISK-->\u202fChanges in industry standards and interfaces** |\n| Loss of product performance when integrated into systems (re\u2011listed in the graph) | **NVIDIA Corporation\u202f--DISCLOSED_RISK-->\u202fLoss of product performance when integrated into systems** |\n| Ability to realize benefits of business investments or acquisitions (re\u2011listed in the graph) | **NVIDIA Corporation\u202f--DISCLOSED_RISK-->\u202fAbility to realize benefits of business investments or acquisitions** |\n| Changes in applicable laws and regulations (re\u2011listed in the graph) | **NVIDIA Corporation\u202f--DISCLOSED_RISK-->\u202fChanges in applicable laws and regulations** |\n\n**Summary**\n\nNVIDIA\u2019s disclosed risk factors cover macro\u2011economic and political conditions, dependence on external manufacturers, technological and competitive dynamics, product development and market acceptance, potential product defects, shifts in consumer preferences and industry standards, integration\u2011related performance loss, the success of strategic investments and acquisitions, regulatory and legal changes, and, specifically for the Hugging\u202fFace acquisition, possible government restrictions on open\u2011source AI models. All of these are directly taken from the provided document excerpts and the listed graph relations.",
+      "graph_paths": [
+        "NVIDIA Corporation --DISCLOSED_RISK--> Government restrictions on open-source models",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Global economic and political conditions",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Reliance on third parties for manufacturing",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Impact of technological development and competition",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Development of new products and technologies",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Market acceptance of products",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Design, manufacturing or software defects",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Changes in consumer preferences or demands",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Changes in industry standards and interfaces",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Loss of product performance when integrated into systems",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Ability to realize benefits of business investments or acquisitions",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Changes in applicable laws and regulations"
+      ],
+      "path_scores": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "matched": [
+          "NVIDIA Corporation --DISCLOSED_RISK--> Ability to realize benefits of business investments or acquisitions",
+          "NVIDIA Corporation --DISCLOSED_RISK--> Changes in applicable laws and regulations",
+          "NVIDIA Corporation --DISCLOSED_RISK--> Changes in consumer preferences or demands",
+          "NVIDIA Corporation --DISCLOSED_RISK--> Changes in industry standards and interfaces",
+          "NVIDIA Corporation --DISCLOSED_RISK--> Design, manufacturing or software defects",
+          "NVIDIA Corporation --DISCLOSED_RISK--> Development of new products and technologies",
+          "NVIDIA Corporation --DISCLOSED_RISK--> Global economic and political conditions",
+          "NVIDIA Corporation --DISCLOSED_RISK--> Government restrictions on open-source models",
+          "NVIDIA Corporation --DISCLOSED_RISK--> Impact of technological development and competition",
+          "NVIDIA Corporation --DISCLOSED_RISK--> Loss of product performance when integrated into systems",
+          "NVIDIA Corporation --DISCLOSED_RISK--> Market acceptance of products",
+          "NVIDIA Corporation --DISCLOSED_RISK--> Reliance on third parties for manufacturing"
+        ],
+        "missing": [],
+        "extra": []
+      },
+      "judgment": {
+        "faithfulness": 0.52,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "correctness": 1.0,
+        "reasoning": "The answer lists 25 bullet\u2011point claims. The 13 unique risk\u2011factor claims (including the government\u2011restriction factor) are directly supported by the two retrieved context chunks. The additional 12 bullet points that state the risk factors are \"re\u2011listed in the graph\" are not mentioned in the provided context, so they are unsupported. Thus 13/25 \u2248 0.52 of the claims are faithful to the context. The answer fully addresses the question by enumerating NVIDIA's disclosed risk factors, so answer relevance is perfect. Both context chunks are relevant to the question, giving a context precision of 1.0. The risk factors match the reference answer exactly, so correctness is 1.0."
+      }
+    },
+    {
+      "id": "rel-04",
+      "question": "What entities are mentioned alongside NVIDIA Corporation in its filing?",
+      "expected_route": "relational",
+      "actual_route": "relational",
+      "route_correct": true,
+      "answer": "The filing mentions several entities together with NVIDIA\u202fCorporation, including:\n\n- **Hugging Face, Inc.** \u2013 the company NVIDIA agreed to acquire\u3010chunk 2\u3011  \n- **China** \u2013 referenced as a source of many open\u2011source models\u3010chunk 2\u3011 and shown in the graph relation NVIDIA Corporation\u202f--MENTIONS-->\u202fChina\u3010graph\u3011  \n- **United States** \u2013 cited as a major location where those models are used\u3010chunk 2\u3011 and shown in the graph relation NVIDIA Corporation\u202f--MENTIONS-->\u202fUnited\u202fStates\u3010graph\u3011  \n- **Securities and Exchange Commission (SEC)** \u2013 noted as the regulator with which NVIDIA files reports\u3010chunk 1\u3011 and shown in the graph relation NVIDIA Corporation\u202f--MENTIONS-->\u202fSecurities\u202fand\u202fExchange\u202fCommission\u3010graph\u3011  \n- **U.S. Government** \u2013 mentioned in the context of lobbying and potential regulatory actions\u3010chunk 2\u3011\n\nThese are the entities that appear alongside NVIDIA\u202fCorporation in the provided filing.",
+      "graph_paths": [
+        "NVIDIA Corporation --MENTIONS--> China",
+        "NVIDIA Corporation --MENTIONS--> United States",
+        "NVIDIA Corporation --MENTIONS--> Securities and Exchange Commission"
+      ],
+      "path_scores": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "matched": [
+          "NVIDIA Corporation --MENTIONS--> China",
+          "NVIDIA Corporation --MENTIONS--> Securities and Exchange Commission",
+          "NVIDIA Corporation --MENTIONS--> United States"
+        ],
+        "missing": [],
+        "extra": []
+      },
+      "judgment": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "correctness": 1.0,
+        "reasoning": "All entities listed by the system (Hugging Face, China, United States, SEC, U.S. Government) are explicitly mentioned in the retrieved context, so the answer is fully grounded (faithfulness=1.0). The answer directly addresses the question about entities mentioned alongside NVIDIA, making it fully relevant (answer_relevancy=1.0). Both provided context chunks contain information needed to answer the question, so context precision is perfect (1.0). The answer includes the three entities from the reference answer (China, United States, SEC) and adds two additional correct entities, so it does not contradict the reference and is at least as correct (correctness=1.0)."
+      }
+    },
+    {
+      "id": "hyb-01",
+      "question": "What is NVIDIA's relationship with Hugging Face?",
+      "expected_route": "graph_guided_hybrid",
+      "actual_route": "graph_guided_hybrid",
+      "route_correct": true,
+      "answer": "NVIDIA is in the process of acquiring Hugging\u202fFace.\u202fOn\u202fSeptember\u202f2\u202f2026 NVIDIA entered into a definitive agreement to purchase Hugging\u202fFace for an approximate\u202f$11.9\u202fbillion, with an additional equity\u2011based retention program for Hugging\u202fFace employees, and the deal is expected to close in the first half of\u202f2027\u202f[chunk\u202f1].\u202fIn the corporate relationship graph this is reflected by the link\u202f**NVIDIA\u202fCorporation\u202f--INVESTED_IN-->\u202fHugging\u202fFace**.  \n\nThus, NVIDIA\u2019s relationship to Hugging\u202fFace is that of an investor/acquirer \u2013 NVIDIA is buying the company and will become its owner while pledging to keep the Hugging\u202fFace platform open.",
+      "graph_paths": [
+        "NVIDIA Corporation --INVESTED_IN--> Hugging Face",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Government restrictions on open-source models",
+        "NVIDIA Corporation --MENTIONS--> China",
+        "NVIDIA Corporation --MENTIONS--> United States",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Global economic and political conditions",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Reliance on third parties for manufacturing",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Impact of technological development and competition",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Development of new products and technologies",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Market acceptance of products",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Design, manufacturing or software defects",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Changes in consumer preferences or demands",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Changes in industry standards and interfaces",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Loss of product performance when integrated into systems",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Ability to realize benefits of business investments or acquisitions",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Changes in applicable laws and regulations",
+        "NVIDIA Corporation --MENTIONS--> Securities and Exchange Commission",
+        "Colette M. Kress --EXECUTIVE_OF--> NVIDIA Corporation",
+        "Hugging Face --DISCLOSED_RISK--> Government restrictions on open-source models",
+        "Hugging Face --MENTIONS--> China",
+        "Hugging Face --MENTIONS--> United States"
+      ],
+      "path_scores": null,
+      "judgment": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.33,
+        "correctness": 1.0,
+        "reasoning": "All statements in the system answer (acquisition agreement date, purchase price, retention program, expected close date, and commitment to keep the platform open) are directly supported by context chunk [1]. No unsupported claims are made, giving a faithfulness of 1.0. The answer directly addresses the question about NVIDIA's relationship with Hugging Face, so answer_relevancy is 1.0. Only chunk [1] is pertinent to the question; chunks [2] and [3] contain filing signatures and forward\u2011looking risk language unrelated to the relationship, so 1 of 3 chunks is relevant, yielding a context_precision of about 0.33. The answer matches the reference answer in substance, so correctness is 1.0."
+      }
+    },
+    {
+      "id": "hyb-02",
+      "question": "What has NVIDIA said about Hugging Face in the context of government restrictions on open-source models?",
+      "expected_route": "graph_guided_hybrid",
+      "actual_route": "graph_guided_hybrid",
+      "route_correct": true,
+      "answer": "NVIDIA warned that government actions aimed at limiting open\u2011source AI could hurt both its own business and the Hugging\u202fFace platform.  In its filing the company said that \u201cgovernment restrictions may negatively impact our business and the Hugging\u202fFace platform\u201d and that \u201cother parties are actively lobbying the U.S. Government and other stakeholders worldwide to adopt legislative or regulatory measures that would restrict or disadvantage open\u2011source models.\u201d  It noted that new or additional rules could \u201crestrict the models or datasets available through Hugging\u202fFace, require changes to Hugging\u202fFace\u2019s platform or practices, delay or restrict offerings, increase compliance costs or result in investigations or enforcement actions\u201d and that such controls\u2014especially those affecting models originating in China but used globally\u2014could have a material impact on the platform and NVIDIA\u2019s results\u3010chunk 1\u3011.",
+      "graph_paths": [
+        "NVIDIA Corporation --INVESTED_IN--> Hugging Face",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Government restrictions on open-source models",
+        "NVIDIA Corporation --MENTIONS--> China",
+        "NVIDIA Corporation --MENTIONS--> United States",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Global economic and political conditions",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Reliance on third parties for manufacturing",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Impact of technological development and competition",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Development of new products and technologies",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Market acceptance of products",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Design, manufacturing or software defects",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Changes in consumer preferences or demands",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Changes in industry standards and interfaces",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Loss of product performance when integrated into systems",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Ability to realize benefits of business investments or acquisitions",
+        "NVIDIA Corporation --DISCLOSED_RISK--> Changes in applicable laws and regulations",
+        "NVIDIA Corporation --MENTIONS--> Securities and Exchange Commission",
+        "Colette M. Kress --EXECUTIVE_OF--> NVIDIA Corporation",
+        "Hugging Face --DISCLOSED_RISK--> Government restrictions on open-source models",
+        "Hugging Face --MENTIONS--> China",
+        "Hugging Face --MENTIONS--> United States"
+      ],
+      "path_scores": null,
+      "judgment": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.33,
+        "correctness": 1.0,
+        "reasoning": "The system answer restates NVIDIA\u2019s statement that government restrictions could negatively impact its business and the Hugging\u202fFace platform, that demand for open\u2011source models sustains the platform, and that many popular models originate in China \u2013 all directly quoted from chunk\u202f1 of the retrieved context. No unsupported claims are added. The answer directly addresses the asked question, so relevance is full. Of the three retrieved chunks, only chunk\u202f1 contains information about government restrictions and Hugging\u202fFace; chunks\u202f2 and\u202f3 are unrelated, giving a relevance fraction of 1/3 \u2248\u202f0.33. The answer matches the reference answer in substance, so correctness is full."
+      }
+    },
+    {
+      "id": "hyb-03",
+      "question": "Why might NVIDIA's investment in Hugging Face be affected by open-source model regulation?",
+      "expected_route": "graph_guided_hybrid",
+      "actual_route": "semantic",
+      "route_correct": false,
+      "answer": "NVIDIA\u2019s deal with Hugging\u202fFace hinges on the ability to keep the platform open and to let developers share, train and deploy open\u2011source models.  The filing notes that \u201cother parties are actively lobbying the U.S. Government and other stakeholders worldwide to adopt legislative or regulatory measures that would restrict or disadvantage open\u2011source models\u201d and that \u201cgovernments may impose new or additional requirements governing the development, training, release, distribution, access, transfer, deployment or use of AI models, including open\u2011source models\u201d\u3010chunk\u202f1\u3011.  Those rules could force Hugging\u202fFace to limit which models or datasets are available, require costly platform changes, delay offerings, raise compliance expenses or trigger investigations\u2014any of which would diminish the value of NVIDIA\u2019s investment and could materially impact both Hugging\u202fFace\u2019s platform and NVIDIA\u2019s business\u3010chunk\u202f1\u3011.",
+      "graph_paths": [],
+      "path_scores": null,
+      "judgment": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.2,
+        "correctness": 1.0,
+        "reasoning": "The answer\u2019s statements are all directly supported by the risk\u2011factor language in chunk\u202f1 of the retrieved context, so faithfulness is perfect. It directly addresses the question about how regulation could affect NVIDIA\u2019s investment, giving it full relevancy. Only chunk\u202f1 of the five provided context pieces is actually about open\u2011source model regulation and its impact on the acquisition; the other four discuss unrelated topics, so context precision is 1/5\u202f=\u202f0.2. The answer\u2019s content matches the reference answer\u2019s explanation, so correctness is also perfect."
+      }
+    },
+    {
+      "id": "hyb-04",
+      "question": "What did NVIDIA disclose about China in relation to its business risks?",
+      "expected_route": "graph_guided_hybrid",
+      "actual_route": "semantic",
+      "route_correct": false,
+      "answer": "NVIDIA warned that a combination of U.S. export controls and actions by the Chinese government creates a material business\u2011risk exposure in China.  In its 10\u2011K risk\u2011factors it disclosed that:\n\n* **U.S. export controls** \u2013 Current and future export\u2011control rules \u201cdisproportionately impact NVIDIA\u201d and have already forced customers outside China to \u201cdesign\u2011out\u201d U.S. semiconductors, while also encouraging overseas governments to steer customers toward competitors.  These controls have already hurt demand for NVIDIA products **in China** and could do so again in other regions\u202f[chunk\u202f1].\n\n* **Chinese\u2011government restrictions** \u2013 The Chinese government has limited the duration of gaming activities and access to games, which could depress NVIDIA\u2019s gaming revenue, and it has taken steps that \u201cencourage customers to purchase from our China\u2011based competitors and discourage customers from purchasing, importing, or using our data\u2011center products,\u201d including any China\u2011specific product that complies with U.S. export rules\u202f[chunk\u202f2].\n\n* **Action\u2011Plan standards** \u2013 An agency of the Chinese government announced an \u201cAction Plan\u201d setting new compute\u2011performance\u2011per\u2011watt and memory\u2011bandwidth standards for data\u2011center accelerators.  Even if U.S. export controls were relaxed, NVIDIA could be blocked from designing products that meet those standards, further threatening its data\u2011center business in China\u202f[chunk\u202f2].\n\n* **Effective foreclosure** \u2013 Because of the export\u2011control regime, NVIDIA is \u201ceffectively foreclosed\u201d from competing in China\u2019s data\u2011center computing market.  While it can still ship uncontrolled products such as gaming and workstation GPUs, it cannot deliver a competitive data\u2011center system that satisfies both U.S. and Chinese approvals, and this loss of opportunity benefits rivals and could have a \u201cmaterial and adverse impact on our business, operating results, and financial condition\u201d\u202f[chunk\u202f4].\n\nTogether, these disclosures make clear that NVIDIA views regulatory actions by both the United States and China as a significant risk to its ability to sell and support products in the Chinese market.",
+      "graph_paths": [],
+      "path_scores": null,
+      "judgment": {
+        "faithfulness": 0.9,
+        "answer_relevancy": 0.9,
+        "context_precision": 0.8,
+        "correctness": 0.0,
+        "reasoning": "The system answer correctly cites several risk disclosures that appear in the retrieved context (export controls, Chinese government restrictions, Action Plan standards, effective foreclosure), so its claims are well\u2011supported (high faithfulness) and it stays on topic with respect to NVIDIA's disclosed China\u2011related business risks (high answer relevancy). However, the reference answer specifies a different disclosure: that many open\u2011source AI models originate in China and that regulatory limits on such models could materially affect the Hugging Face platform and NVIDIA's business. The system answer does not mention this at all, so it does not agree with the known\u2011correct answer (correctness near 0). Of the five context chunks, four contain material about China\u2011related risks, while the fifth is a generic forward\u2011looking statement, giving a context precision of about 0.8."
+      }
+    }
+  ],
+  "summary": {
+    "n_questions": 12,
+    "router_accuracy": 0.8333333333333334,
+    "path_precision": 1.0,
+    "path_recall": 1.0,
+    "path_f1": 1.0,
+    "faithfulness": 0.9516666666666667,
+    "answer_relevancy": 0.9916666666666667,
+    "context_precision": 0.5383333333333333,
+    "correctness": 0.9166666666666666
+  }
+}

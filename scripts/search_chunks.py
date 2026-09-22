@@ -15,8 +15,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from entitygraph_rag.extraction.gemini_client import build_client
-from entitygraph_rag.retrieval import DEFAULT_EMBEDDING_MODEL, DEFAULT_OUTPUT_DIMENSIONALITY, VectorIndex, semantic_search
+from entitygraph_rag.retrieval import DEFAULT_EMBEDDING_MODEL, VectorIndex, build_embedding_client, semantic_search
 
 ROOT = Path(__file__).resolve().parent.parent
 CHUNKS_PATH = ROOT / "data" / "processed" / "chunks.jsonl"
@@ -38,7 +37,6 @@ def main() -> None:
     parser.add_argument("query", type=str)
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--model", type=str, default=DEFAULT_EMBEDDING_MODEL)
-    parser.add_argument("--dimensions", type=int, default=DEFAULT_OUTPUT_DIMENSIONALITY)
     args = parser.parse_args()
 
     if not INDEX_PATH.with_name(INDEX_PATH.name + ".ids.json").exists():
@@ -46,7 +44,7 @@ def main() -> None:
 
     chunks_by_id = load_chunks_by_id(CHUNKS_PATH)
     index = VectorIndex.from_file(INDEX_PATH)
-    client = build_client()
+    client = build_embedding_client()
 
     results = semantic_search(
         args.query,
@@ -54,7 +52,6 @@ def main() -> None:
         chunks_by_id=chunks_by_id,
         client=client,
         model_name=args.model,
-        output_dimensionality=args.dimensions,
         top_k=args.top_k,
     )
 

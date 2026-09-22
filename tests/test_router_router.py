@@ -13,7 +13,7 @@ def test_route_query_dispatches_semantic(monkeypatch):
     monkeypatch.setattr(router_module, "semantic_search", lambda *a, **k: [{"chunk_id": "c1"}])
 
     result = route_query(
-        "what risks does NVIDIA face?", client=None, schema=None, store=None, index=None,
+        "what risks does NVIDIA face?", client=None, embedding_client=None, schema=None, store=None, index=None,
         chunks_by_id={}, entity_lookup=None,
     )
 
@@ -28,7 +28,7 @@ def test_route_query_dispatches_relational(monkeypatch):
     monkeypatch.setattr(router_module, "run_relational", lambda *a, **k: {"route": "relational", "results": []})
 
     result = route_query(
-        "who supplies NVIDIA?", client=None, schema=None, store=None, index=None,
+        "who supplies NVIDIA?", client=None, embedding_client=None, schema=None, store=None, index=None,
         chunks_by_id={}, entity_lookup=None,
     )
 
@@ -43,7 +43,7 @@ def test_route_query_dispatches_graph_guided_hybrid(monkeypatch):
     )
 
     result = route_query(
-        "what has NVIDIA said about TSMC?", client=None, schema=None, store=None, index=None,
+        "what has NVIDIA said about TSMC?", client=None, embedding_client=None, schema=None, store=None, index=None,
         chunks_by_id={}, entity_lookup=None,
     )
 

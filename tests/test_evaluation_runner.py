@@ -40,7 +40,7 @@ def test_evaluate_question_relational_route_matches_and_scores_paths(monkeypatch
     _patch_pipeline(monkeypatch, route_result=route_result, actual_route="relational")
 
     row = evaluate_question(
-        RELATIONAL_QUESTION, client=None, schema=None, store=None, index=None, chunks_by_id={}, entity_lookup=None,
+        RELATIONAL_QUESTION, client=None, embedding_client=None, schema=None, store=None, index=None, chunks_by_id={}, entity_lookup=None,
     )
 
     assert row["route_correct"] is True
@@ -54,7 +54,7 @@ def test_evaluate_question_semantic_route_has_no_path_scores(monkeypatch):
     _patch_pipeline(monkeypatch, route_result={"chunks": [CHUNK_A]}, actual_route="semantic")
 
     row = evaluate_question(
-        SEMANTIC_QUESTION, client=None, schema=None, store=None, index=None, chunks_by_id={}, entity_lookup=None,
+        SEMANTIC_QUESTION, client=None, embedding_client=None, schema=None, store=None, index=None, chunks_by_id={}, entity_lookup=None,
     )
 
     assert row["route_correct"] is True
@@ -65,7 +65,7 @@ def test_evaluate_question_flags_route_mismatch(monkeypatch):
     _patch_pipeline(monkeypatch, route_result={"chunks": []}, actual_route="graph_guided_hybrid")
 
     row = evaluate_question(
-        SEMANTIC_QUESTION, client=None, schema=None, store=None, index=None, chunks_by_id={}, entity_lookup=None,
+        SEMANTIC_QUESTION, client=None, embedding_client=None, schema=None, store=None, index=None, chunks_by_id={}, entity_lookup=None,
     )
 
     assert row["route_correct"] is False
@@ -88,7 +88,7 @@ def test_run_evaluation_aggregates_summary_across_questions(monkeypatch):
 
     evaluation = run_evaluation(
         [RELATIONAL_QUESTION, SEMANTIC_QUESTION],
-        client=None, schema=None, store=None, index=None, chunks_by_id={}, entity_lookup=None,
+        client=None, embedding_client=None, schema=None, store=None, index=None, chunks_by_id={}, entity_lookup=None,
     )
 
     assert evaluation["summary"]["n_questions"] == 2
