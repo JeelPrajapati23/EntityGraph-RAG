@@ -1,0 +1,142 @@
+# Evaluation golden set — see project plan Phase 6 and src/entitygraph_rag/evaluation/.
+#
+# Every question here is grounded in the corpus actually ingested so far
+# (NVIDIA filings/8-Ks + the Hugging Face acquisition 8-K — run
+# `uv run python scripts/build_graph.py` etc. to reproduce data/processed/).
+# That corpus is a single-company slice of the 20-company universe in
+# config/companies.yaml, so it only exercises three of the router's graph
+# patterns:
+#   - relational/neighbors: well covered (INVESTED_IN, EXECUTIVE_OF,
+#     DISCLOSED_RISK, MENTIONS edges all exist for NVIDIA).
+#   - relational/two_hop and relational/common_neighbors: NOT exercised —
+#     the current graph has no two-hop company chain, and dispatch.py's
+#     common_neighbors call hardcodes direction="in" (built for "who
+#     supplies both X and Y" style queries), which would silently miss a
+#     shared-object pattern like "what risk do NVIDIA and Hugging Face both
+#     disclose" (both are DISCLOSED_RISK subjects, not objects). Flagged
+#     here rather than papered over with a golden question that can't pass
+#     on the current code; re-test once the full corpus + a direction fix
+#     land.
+#   - graph_guided_hybrid: expected_graph_paths is intentionally left empty
+#     for these questions. 1-hop expansion pulls in a query entity's entire
+#     neighborhood (not just edges relevant to the question), so the
+#     "correct" path set isn't small or hand-verifiable — router accuracy
+#     and LLM-judged answer quality carry these instead (see judge.py).
+
+questions:
+  - id: sem-01
+    expected_route: semantic
+    question: "What risk does NVIDIA disclose about its reliance on third parties for manufacturing?"
+    expected_answer: >
+      NVIDIA discloses reliance on third parties to manufacture, assemble, package, and test
+      its products as a factor that could cause actual results to differ from expectations.
+
+  - id: sem-02
+    expected_route: semantic
+    question: "What has NVIDIA disclosed about the risk of not realizing the expected benefits of an acquisition?"
+    expected_answer: >
+      NVIDIA discloses that its ability to realize the potential benefits of business
+      investments or acquisitions — such as the proposed Hugging Face acquisition — is a risk
+      factor that could cause actual results to differ materially from expectations.
+
+  - id: sem-03
+    expected_route: semantic
+    question: "What did NVIDIA disclose about government restrictions on open-source AI models in connection with its Hugging Face acquisition?"
+    expected_answer: >
+      NVIDIA disclosed that governments may impose new requirements restricting the
+      development, training, release, or use of AI models, including open-source models,
+      which could restrict models available through Hugging Face, require changes to its
+      platform, delay offerings, raise compliance costs, or trigger enforcement actions. The
+      filing notes many popular open-source models originate in China and are used by
+      developers in the US and worldwide.
+
+  - id: sem-04
+    expected_route: semantic
+    question: "What risk does NVIDIA disclose about changes in industry standards and interfaces?"
+    expected_answer: >
+      NVIDIA lists changes in industry standards and interfaces among the risk factors that
+      could cause its actual results to differ materially from expectations.
+
+  - id: rel-01
+    expected_route: relational
+    question: "Which company has NVIDIA Corporation invested in?"
+    expected_answer: "NVIDIA Corporation has invested in (agreed to acquire) Hugging Face, Inc."
+    expected_graph_paths:
+      - "NVIDIA Corporation --INVESTED_IN--> Hugging Face"
+
+  - id: rel-02
+    expected_route: relational
+    question: "Who is an executive of NVIDIA Corporation?"
+    expected_answer: "Colette M. Kress is an executive of NVIDIA Corporation."
+    expected_graph_paths:
+      - "Colette M. Kress --EXECUTIVE_OF--> NVIDIA Corporation"
+
+  - id: rel-03
+    expected_route: relational
+    question: "What risk factors has NVIDIA Corporation disclosed?"
+    expected_answer: >
+      NVIDIA discloses risk factors including government restrictions on open-source models,
+      global economic and political conditions, reliance on third parties for manufacturing,
+      the impact of technological development and competition, development of new products
+      and technologies, market acceptance of products, design/manufacturing/software defects,
+      changes in consumer preferences, changes in industry standards and interfaces, loss of
+      product performance when integrated into systems, ability to realize benefits of
+      business investments or acquisitions, and changes in applicable laws and regulations.
+    expected_graph_paths:
+      - "NVIDIA Corporation --DISCLOSED_RISK--> Government restrictions on open-source models"
+      - "NVIDIA Corporation --DISCLOSED_RISK--> Global economic and political conditions"
+      - "NVIDIA Corporation --DISCLOSED_RISK--> Reliance on third parties for manufacturing"
+      - "NVIDIA Corporation --DISCLOSED_RISK--> Impact of technological development and competition"
+      - "NVIDIA Corporation --DISCLOSED_RISK--> Development of new products and technologies"
+      - "NVIDIA Corporation --DISCLOSED_RISK--> Market acceptance of products"
+      - "NVIDIA Corporation --DISCLOSED_RISK--> Design, manufacturing or software defects"
+      - "NVIDIA Corporation --DISCLOSED_RISK--> Changes in consumer preferences or demands"
+      - "NVIDIA Corporation --DISCLOSED_RISK--> Changes in industry standards and interfaces"
+      - "NVIDIA Corporation --DISCLOSED_RISK--> Loss of product performance when integrated into systems"
+      - "NVIDIA Corporation --DISCLOSED_RISK--> Ability to realize benefits of business investments or acquisitions"
+      - "NVIDIA Corporation --DISCLOSED_RISK--> Changes in applicable laws and regulations"
+
+  - id: rel-04
+    expected_route: relational
+    question: "What entities are mentioned alongside NVIDIA Corporation in its filing?"
+    expected_answer: "NVIDIA Corporation's filing mentions China, the United States, and the Securities and Exchange Commission."
+    expected_graph_paths:
+      - "NVIDIA Corporation --MENTIONS--> China"
+      - "NVIDIA Corporation --MENTIONS--> United States"
+      - "NVIDIA Corporation --MENTIONS--> Securities and Exchange Commission"
+
+  - id: hyb-01
+    expected_route: graph_guided_hybrid
+    question: "What is NVIDIA's relationship with Hugging Face?"
+    expected_answer: >
+      NVIDIA entered into a definitive agreement to acquire Hugging Face for approximately
+      $11.9 billion, plus an equity-based retention program of up to approximately $1.0
+      billion for Hugging Face employees joining NVIDIA. NVIDIA has committed to keeping
+      Hugging Face's platform open.
+
+  - id: hyb-02
+    expected_route: graph_guided_hybrid
+    question: "What has NVIDIA said about Hugging Face in the context of government restrictions on open-source models?"
+    expected_answer: >
+      NVIDIA disclosed that government restrictions on open-source AI models could negatively
+      affect its business and the Hugging Face platform, since demand for open-source models
+      sustains that platform, and many popular open-source models originate in China and are
+      used by developers in the US and worldwide.
+
+  - id: hyb-03
+    expected_route: graph_guided_hybrid
+    question: "Why might NVIDIA's investment in Hugging Face be affected by open-source model regulation?"
+    expected_answer: >
+      Because the Hugging Face platform's value depends on demand for open-source models, and
+      governments may restrict the development, training, release, or use of such models
+      (especially ones originating in China), which could restrict Hugging Face's offerings
+      and negatively affect NVIDIA's investment.
+
+  - id: hyb-04
+    expected_route: graph_guided_hybrid
+    question: "What did NVIDIA disclose about China in relation to its business risks?"
+    expected_answer: >
+      NVIDIA disclosed that many popular open-source AI models originate in China and are used
+      by developers in the US and worldwide, and that regulatory restrictions on models
+      derived from regions including China could materially impact the Hugging Face platform
+      and NVIDIA's business.
