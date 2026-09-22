@@ -17,9 +17,10 @@ retrieval instead of pure vector search).
 ## Status
 
 Active development — dataset, schema, data acquisition, ingestion/chunking,
-entity/relation extraction, and entity resolution are in place; graph
-construction, the hybrid retrieval router, and evaluation are next. Follow
-along in the commit history.
+entity/relation extraction, entity resolution, and graph construction
+(NetworkX, behind a swappable GraphStore interface) are in place; the
+hybrid retrieval router and evaluation are next. Follow along in the
+commit history.
 
 ## Architecture (evolving)
 
