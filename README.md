@@ -16,9 +16,10 @@ retrieval instead of pure vector search).
 
 ## Status
 
-Active development — dataset, schema, and data acquisition are in place;
-ingestion/chunking is next, followed by extraction, graph construction, the
-hybrid retrieval router, and evaluation. Follow along in the commit history.
+Active development — dataset, schema, data acquisition, ingestion/chunking,
+and the core entity/relation extraction pass are in place; entity
+resolution, graph construction, the hybrid retrieval router, and evaluation
+are next. Follow along in the commit history.
 
 ## Architecture (evolving)
 
@@ -40,6 +41,9 @@ environment management.
 ```bash
 uv sync
 ```
+
+Extraction (`scripts/extract_triples.py`) calls the Gemini API — copy
+`.env.example` to `.env` and set `GEMINI_API_KEY`.
 
 ## License
 
