@@ -17,9 +17,9 @@ retrieval instead of pure vector search).
 ## Status
 
 Active development — dataset, schema, data acquisition, ingestion/chunking,
-and the core entity/relation extraction pass are in place; entity
-resolution, graph construction, the hybrid retrieval router, and evaluation
-are next. Follow along in the commit history.
+entity/relation extraction, and entity resolution are in place; graph
+construction, the hybrid retrieval router, and evaluation are next. Follow
+along in the commit history.
 
 ## Architecture (evolving)
 
