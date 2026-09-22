@@ -41,6 +41,9 @@ def test_run_relational_neighbors():
     assert result["route"] == "relational"
     names = {r["canonical_name"] for r in result["results"]}
     assert names == {"NVIDIA", "Apple"}
+    # each row carries its origin entity and edge provenance, for citations later
+    assert all(r["source"]["canonical_name"] == "TSMC" for r in result["results"])
+    assert all(len(r["provenance"]) == 1 for r in result["results"])
 
 
 def test_run_relational_common_neighbors():
@@ -51,6 +54,7 @@ def test_run_relational_common_neighbors():
     result = run_relational(decision, store=store, entity_lookup=lookup)
 
     assert [r["canonical_name"] for r in result["results"]] == ["TSMC"]
+    assert {t["canonical_name"] for t in result["results"][0]["targets"]} == {"NVIDIA", "Apple"}
 
 
 def test_run_relational_unresolved_entity_returns_warning():
@@ -86,3 +90,7 @@ def test_run_graph_guided_hybrid_scopes_chunks_and_expands_entities(monkeypatch)
     expanded_names = {e["canonical_name"] for e in result["expanded_entities"]}
     assert expanded_names == {"TSMC", "NVIDIA", "Apple"}
     assert result["chunks"] == [chunks_by_id["c1"]]  # only the edge's source chunk, not c2
+
+    edge_names = {e["canonical_name"] for e in result["edges"]}
+    assert edge_names == {"NVIDIA", "Apple"}
+    assert all(e["source"]["canonical_name"] == "TSMC" for e in result["edges"])
