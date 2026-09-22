@@ -23,8 +23,23 @@ def format_two_hop_path(row: dict) -> str:
 
 
 def format_common_neighbor_paths(row: dict) -> list[str]:
+    """One path per target, oriented by the row's direction (see router/dispatch.py's common_neighbor_direction).
+
+    "in": the shared entity is the subject; "out": it's the object; "both"
+    (symmetric or unspecified relation): undirected, so no arrowhead.
+    """
     relation = row["relation"] or "related to"
-    return [f"{row['canonical_name']} --{relation}--> {target['canonical_name']}" for target in row["targets"]]
+    direction = row.get("direction", "in")
+    name = row["canonical_name"]
+    paths = []
+    for target in row["targets"]:
+        if direction == "out":
+            paths.append(f"{target['canonical_name']} --{relation}--> {name}")
+        elif direction == "both":
+            paths.append(f"{name} --{relation}-- {target['canonical_name']}")
+        else:
+            paths.append(f"{name} --{relation}--> {target['canonical_name']}")
+    return paths
 
 
 def graph_paths_for_result(result: dict) -> list[str]:

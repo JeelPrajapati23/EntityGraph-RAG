@@ -37,6 +37,19 @@ def test_format_common_neighbor_paths():
     assert format_common_neighbor_paths(row) == ["TSMC --SUPPLIES--> NVIDIA", "TSMC --SUPPLIES--> Apple"]
 
 
+def test_format_common_neighbor_paths_shared_object():
+    risk = {"entity_id": "RiskFactor:x", "canonical_name": "Export controls"}
+    row = {**risk, "relation": "DISCLOSED_RISK", "direction": "out", "targets": [NVIDIA, APPLE]}
+    assert format_common_neighbor_paths(row) == [
+        "NVIDIA --DISCLOSED_RISK--> Export controls", "Apple --DISCLOSED_RISK--> Export controls",
+    ]
+
+
+def test_format_common_neighbor_paths_undirected():
+    row = {**TSMC, "relation": "COMPETES_WITH", "direction": "both", "targets": [NVIDIA]}
+    assert format_common_neighbor_paths(row) == ["TSMC --COMPETES_WITH-- NVIDIA"]
+
+
 def test_graph_paths_for_result_semantic_route_is_empty():
     assert graph_paths_for_result({"route": "semantic", "chunks": []}) == []
 

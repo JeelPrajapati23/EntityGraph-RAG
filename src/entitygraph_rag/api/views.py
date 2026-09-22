@@ -16,7 +16,11 @@ def _edges_for_result(result: dict) -> list[tuple[str, str, str]]:
         pattern = result.get("pattern", "neighbors")
         for row in result.get("results", []):
             if pattern == "common_neighbors":
-                edges.extend((row["entity_id"], row["relation"], t["entity_id"]) for t in row["targets"])
+                for t in row["targets"]:
+                    if row.get("direction") == "out":
+                        edges.append((t["entity_id"], row["relation"], row["entity_id"]))
+                    else:
+                        edges.append((row["entity_id"], row["relation"], t["entity_id"]))
             elif pattern == "two_hop":
                 edges.append((row["source"]["entity_id"], row["first_relation"], row["via"]["entity_id"]))
                 edges.append((row["via"]["entity_id"], row["relation"], row["target"]["entity_id"]))

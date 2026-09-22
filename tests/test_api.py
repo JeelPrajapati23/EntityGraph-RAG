@@ -115,6 +115,15 @@ def test_result_subgraph_two_hop(store):
     assert unknown["canonical_name"] == "Company:x"
 
 
+def test_result_subgraph_common_neighbors_shared_object(store):
+    result = {"route": "relational", "pattern": "common_neighbors", "results": [
+        {"entity_id": "Company:x", "relation": "DISCLOSED_RISK", "direction": "out", "targets": [TSMC, NVIDIA]},
+    ]}
+    assert [(e["source"], e["target"]) for e in result_subgraph(result, store)["edges"]] == [
+        ("Company:tsmc", "Company:x"), ("Company:nvidia", "Company:x"),
+    ]
+
+
 def test_result_subgraph_dedupes_hybrid_edges_seen_from_both_ends(store):
     result = {"route": "graph_guided_hybrid", "edges": [
         {**NVIDIA, "source": TSMC, "relation": "SUPPLIES", "direction": "out"},

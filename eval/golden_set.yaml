@@ -9,14 +9,12 @@
 #   - relational/neighbors: well covered (INVESTED_IN, EXECUTIVE_OF,
 #     DISCLOSED_RISK, MENTIONS edges all exist for NVIDIA).
 #   - relational/two_hop and relational/common_neighbors: NOT exercised —
-#     the current graph has no two-hop company chain, and dispatch.py's
-#     common_neighbors call hardcodes direction="in" (built for "who
-#     supplies both X and Y" style queries), which would silently miss a
-#     shared-object pattern like "what risk do NVIDIA and Hugging Face both
-#     disclose" (both are DISCLOSED_RISK subjects, not objects). Flagged
-#     here rather than papered over with a golden question that can't pass
-#     on the current code; re-test once the full corpus + a direction fix
-#     land.
+#     the current graph has no two-hop company chain. common_neighbors'
+#     direction used to be hardcoded to "in", missing shared-object
+#     questions like "what risk do NVIDIA and Hugging Face both disclose";
+#     dispatch.py now infers it from the schema (see
+#     common_neighbor_direction), but no golden question covers it yet —
+#     add one when the golden set is next expanded.
 #   - graph_guided_hybrid: expected_graph_paths is intentionally left empty
 #     for these questions. 1-hop expansion pulls in a query entity's entire
 #     neighborhood (not just edges relevant to the question), so the

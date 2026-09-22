@@ -13,6 +13,7 @@ the graph.
 from huggingface_hub import InferenceClient
 from pydantic import BaseModel
 
+from ..extraction.schema import Schema
 from ..graph import GraphStore, common_neighbors, two_hop_neighbors
 from ..retrieval import VectorIndex, semantic_search
 from .entity_lookup import EntityLookup
@@ -32,7 +33,32 @@ def _resolve_entities(decision: BaseModel, entity_lookup: EntityLookup) -> list[
     return resolved
 
 
-def run_relational(decision: BaseModel, *, store: GraphStore, entity_lookup: EntityLookup) -> dict:
+def common_neighbor_direction(schema: Schema, relation: str | None, entity_types: list[str | None]) -> str:
+    """Which side of `relation` the two query entities sit on, as a GraphStore.neighbors direction.
+
+    "in": they're the relation's objects, so shared neighbors are subjects
+    ("who SUPPLIES both NVIDIA and Apple?"). "out": they're its subjects,
+    so shared neighbors are objects ("what risk do NVIDIA and Hugging Face
+    both DISCLOSE?" — only Companies can be DISCLOSED_RISK subjects).
+    "both": the relation is symmetric, or none was given.
+
+    Read off the schema's subject/object types. When the entities' types fit
+    either side (SUPPLIES is Company→Company), types alone can't tell "who
+    supplies both X and Y" from "who do X and Y both supply" — that falls
+    back to "in", the former reading.
+    """
+    if relation is None:
+        return "both"
+    edge_type = schema.edge_types[relation]
+    if edge_type.symmetric:
+        return "both"
+    types = set(entity_types)
+    fits_subject = types <= set(edge_type.subject_types)
+    fits_object = types <= set(edge_type.object_types)
+    return "out" if fits_subject and not fits_object else "in"
+
+
+def run_relational(decision: BaseModel, *, schema: Schema, store: GraphStore, entity_lookup: EntityLookup) -> dict:
     entity_ids = _resolve_entities(decision, entity_lookup)
     pattern = decision.graph_pattern or "neighbors"
 
@@ -40,9 +66,15 @@ def run_relational(decision: BaseModel, *, store: GraphStore, entity_lookup: Ent
         return {"route": "relational", "pattern": pattern, "results": [], "warning": "no known entities matched"}
 
     if pattern == "common_neighbors" and len(entity_ids) >= 2:
-        targets = [_named(store, entity_ids[0]), _named(store, entity_ids[1])]
-        shared = common_neighbors(store, entity_ids[0], entity_ids[1], relation=decision.relation, direction="in")
-        results = [{**_named(store, e), "relation": decision.relation, "targets": targets} for e in shared]
+        pair = entity_ids[:2]
+        targets = [_named(store, entity_id) for entity_id in pair]
+        entity_types = [(store.get_entity(entity_id) or {}).get("entity_type") for entity_id in pair]
+        direction = common_neighbor_direction(schema, decision.relation, entity_types)
+        shared = common_neighbors(store, *pair, relation=decision.relation, direction=direction)
+        results = [
+            {**_named(store, e), "relation": decision.relation, "direction": direction, "targets": targets}
+            for e in shared
+        ]
         return {"route": "relational", "pattern": pattern, "results": results}
 
     if pattern == "two_hop":

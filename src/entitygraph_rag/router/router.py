@@ -51,7 +51,7 @@ def route_query(
     if decision.route == "semantic":
         result = {"route": "semantic", "chunks": semantic_search(query, index=index, chunks_by_id=chunks_by_id, client=embedding_client, top_k=top_k)}
     elif decision.route == "relational":
-        result = run_relational(decision, store=store, entity_lookup=entity_lookup)
+        result = run_relational(decision, schema=schema, store=store, entity_lookup=entity_lookup)
     else:
         result = run_graph_guided_hybrid(
             query, decision, store=store, entity_lookup=entity_lookup, index=index,
