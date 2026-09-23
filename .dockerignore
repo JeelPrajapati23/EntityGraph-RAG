@@ -1,0 +1,15 @@
+# Everything is excluded except what the Dockerfile copies.
+*
+!pyproject.toml
+!uv.lock
+!README.md
+!LICENSE
+!src/
+!schema/
+!config/
+!data/processed/depgraph/graph.pkl
+!data/processed/depgraph/nodes.jsonl
+!data/processed/depgraph/advisory_chunks.jsonl
+!data/processed/depgraph/advisory_index_minilm_windowed.*
+!data/processed/depgraph/releases.json
+**/__pycache__

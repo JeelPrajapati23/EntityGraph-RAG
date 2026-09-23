@@ -11,27 +11,48 @@ below it is an `introduced`. `introduced: "0"` means "from the first
 version".
 """
 
-from functools import cmp_to_key
+from functools import cmp_to_key, lru_cache
 
 import nodesemver
 
 ZERO = "0"
 
 
+@lru_cache(maxsize=500_000)
 def compare(a: str, b: str) -> int:
-    """-1 / 0 / 1 semver order. OSV's "0" sorts below every version."""
+    """-1 / 0 / 1 semver order. OSV's "0" sorts below every version. Cached, like `satisfies`."""
     if a == ZERO or b == ZERO:
         return (a != ZERO) - (b != ZERO)
-    return nodesemver.compare(a, b, False)
+    return nodesemver.compare(_parse_version(a), _parse_version(b), False)
 
 
+@lru_cache(maxsize=500_000)
 def satisfies(version: str, version_range: str) -> bool:
     """Whether `version` is in an npm range, e.g. satisfies("1.13.1", "^1.10.0").
 
     Follows npm: a prerelease only satisfies a range that names a
-    prerelease of the same major.minor.patch.
+    prerelease of the same major.minor.patch. Same result as
+    `nodesemver.satisfies`, but remediation planning asks hundreds of
+    thousands of (version, range) pairs, and node-semver re-parses both
+    strings on every call, so parsed ranges, versions and results are cached.
     """
-    return nodesemver.satisfies(version, version_range, False)
+    parsed = _parse_range(version_range)
+    return parsed is not None and parsed.test(_parse_version(version))
+
+
+@lru_cache(maxsize=50_000)
+def _parse_range(version_range: str) -> "nodesemver.Range | None":
+    if not isinstance(version_range, str):
+        raise nodesemver.InvalidTypeIncluded(f"must be str, but {version_range!r}")
+    try:
+        return nodesemver.make_range(version_range, False)
+    except ValueError:  # an unparseable range matches nothing, as in nodesemver.satisfies
+        return None
+
+
+@lru_cache(maxsize=100_000)
+def _parse_version(version: str) -> "nodesemver.SemVer":
+    return nodesemver.make_semver(version, False)
 
 
 def _sorted_events(events: list[dict]) -> list[tuple[str, str]]:

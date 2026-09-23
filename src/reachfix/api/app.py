@@ -30,6 +30,7 @@ from ..depgraph.scan import run_scan
 from ..depgraph.synthesis import synthesize_answer
 from ..graph import ego_subgraph
 from ..npm.upload import load_upload
+from .ratelimit import QueryLimiter, client_ip
 from .resources import Resources, load_resources
 from .views import fix_plans, plan_summaries, result_subgraph
 
@@ -41,8 +42,14 @@ class QueryRequest(BaseModel):
     top_k: int = Field(default=5, ge=1, le=20)
 
 
-def create_app(resources: Resources | None = None, loader: Callable[[], Resources] = load_resources) -> FastAPI:
-    """Build the app. Pass `resources` directly (tests) or let startup call `loader`."""
+def create_app(resources: Resources | None = None, loader: Callable[[], Resources] = load_resources,
+               query_limiter: QueryLimiter | None = None) -> FastAPI:
+    """Build the app. Pass `resources` directly (tests) or let startup call `loader`.
+
+    `query_limiter` caps /query (the only endpoint spending Groq tokens); by default it comes from
+    the REACHFIX_QUERY_LIMIT_* environment variables, and is off when they are unset.
+    """
+    limiter = query_limiter if query_limiter is not None else QueryLimiter.from_env()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -68,6 +75,8 @@ def create_app(resources: Resources | None = None, loader: Callable[[], Resource
 
     @app.post("/query")
     def query(body: QueryRequest, request: Request) -> dict:
+        if limiter is not None and (refused := limiter.acquire(client_ip(request))):
+            raise HTTPException(status_code=429, detail=refused)
         res: Resources = request.app.state.resources
         try:
             result = route_query(body.query, client=res.client, ctx=res.ctx, schema=res.schema, top_k=body.top_k)
