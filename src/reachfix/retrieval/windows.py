@@ -76,7 +76,7 @@ def search_chunks(
     candidate_chunk_ids: set[str] | None = None,
     query_vector: list[float] | None = None,
 ) -> list[dict]:
-    """Top chunks for a query, over a window index. Same result shape as semantic_search, plus `matched_window`.
+    """Top chunks for a query, over a window index: chunk fields plus `score` and `matched_window`.
 
     candidate_chunk_ids scopes the search to those parent chunks (the
     graph-guided route). query_vector skips the embedding call when the

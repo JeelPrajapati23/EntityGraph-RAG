@@ -1,8 +1,8 @@
 # DepGraph entity/relation schema — v2
 #
-# Retargets the pipeline from SEC filings (v1) to npm dependency and
-# vulnerability exposure. v1.yaml is left untouched — a new domain is a new
-# schema version, not an in-place edit.
+# Retargets the pipeline from SEC filings (v1, removed with the finance
+# pipeline; see git history) to npm dependency and vulnerability exposure.
+# A new domain is a new schema version, not an in-place edit.
 #
 # Unlike v1, most edges here are NOT LLM-extracted. Each edge type declares
 # an `extraction` method:

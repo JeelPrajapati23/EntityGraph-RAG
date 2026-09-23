@@ -1,13 +1,11 @@
 """Thin Groq wrapper for chat/JSON completions (openai/gpt-oss-120b by default).
 
-Shared by every generation call site — extraction, router classification,
-answer synthesis, and eval judging — the way extraction/gemini_client.py
-used to be before the Groq migration. Groq's OpenAI-compatible API doesn't
-offer Gemini's response_schema-level validation, so generate_json only
-guarantees syntactically valid JSON (via response_format json_object);
-callers still validate the returned text against their own Pydantic model
-(see extraction/schema.py's validate_triple, router/classify.py's
-RouterDecision, evaluation/judge.py's AnswerJudgment).
+Shared by every generation call site: exploit-condition extraction, router
+classification and answer synthesis. Groq's OpenAI-compatible API has no
+response_schema-level validation, so generate_json only guarantees
+syntactically valid JSON (via response_format json_object); callers still
+validate the returned text against their own Pydantic model (the
+conditions/ extraction model, depgraph/classify.py's decision model).
 
 GROQ_API_KEY may hold several comma-separated keys. Groq's limits are per
 organization, so they only help if each key belongs to a different one.

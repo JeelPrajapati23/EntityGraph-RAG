@@ -1,7 +1,7 @@
 """Turn DepGraph nodes and edge files into GraphStore entities and edges.
 
-The GraphStore interface is shared with the finance pipeline, so nodes use
-its entity shape (entity_id, entity_type, canonical_name, aliases) with the
+The GraphStore interface predates DepGraph, so nodes use its generic entity
+shape (entity_id, entity_type, canonical_name, aliases) with the
 schema properties under `properties`. Edges become subject_id / relation /
 object_id, with a `provenance` list and the remaining fields as
 `properties`.

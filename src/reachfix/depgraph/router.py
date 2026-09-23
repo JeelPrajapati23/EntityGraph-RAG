@@ -1,7 +1,6 @@
 """DepGraph router: classify a query, then dispatch it to the graph, the advisory index, or both.
 
-Plain Python, like the finance router: one LLM call classifies, and a plain
-if/elif dispatches. Every result records the route, the classifier's
+Plain Python: one LLM call classifies, and a plain if/elif dispatches. Every result records the route, the classifier's
 reasoning and how each named entity resolved, so a wrong answer can be
 traced to classification, resolution or retrieval.
 """

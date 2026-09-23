@@ -12,8 +12,9 @@ In order:
    ("follow redirects" -> follow-redirects). Only one best match, at
    FUZZY_THRESHOLD or above.
 
-The finance-era `resolution.normalize_name` is not reused: it drops words
-like "co" and "group", which are real npm package names.
+Names are not normalized beyond case and separators: dropping corporate
+words like "co" or "group", as company-name matching does, would break real
+npm package names.
 """
 
 import re

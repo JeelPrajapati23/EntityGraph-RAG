@@ -1,41 +1,41 @@
-"""Turn a router result into the {"nodes", "edges"} shape the frontend graph panel draws.
+"""Turn a DepGraph router result into the {"nodes", "edges"} shape the frontend graph panel draws.
 
-Mirrors synthesis/citations.py's graph_paths_for_result, but emits
-structured node/edge records instead of path strings, so the traversal
-behind a relational or graph-guided-hybrid answer can be highlighted
-visually. The semantic route touches no graph, so it yields an empty graph.
+Exposure, affected-projects, dependency-path and remediation rows each carry
+a dependency path, drawn as DEPENDS_ON edges ending in HAS_VULNERABILITY
+edges to the row's advisories. Neighbor rows are single edges. Semantic and
+graph-guided-hybrid answers come from advisory text, so they yield an empty
+graph. Rows are capped: react-scripts alone has 177 advisories in its tree.
 """
 
 from ..graph import GraphStore
 
+MAX_DRAWN_ROWS = 40  # rows arrive ranked (worst severity / shallowest first)
+
+
+def _advisory_ids(row: dict) -> list[str]:
+    if row.get("vulnerability_id"):
+        return [row["vulnerability_id"]]
+    return [a["vulnerability_id"] for a in row.get("vulnerabilities", []) + row.get("advisories", [])]
+
 
 def _edges_for_result(result: dict) -> list[tuple[str, str, str]]:
     """(subject_id, relation, object_id) triples this result traversed."""
+    if result.get("executed_route") != "relational":
+        return []
+    rows = result.get("results", [])[:MAX_DRAWN_ROWS]
+    if (result.get("executed_pattern") or result.get("pattern")) == "neighbors":
+        edges = []
+        for row in rows:
+            source, other = row["source"]["node_id"], row["node_id"]
+            edges.append((source, row["relation"], other) if row["direction"] == "out" else (other, row["relation"], source))
+        return edges
+
     edges = []
-    if result["route"] == "relational":
-        pattern = result.get("pattern", "neighbors")
-        for row in result.get("results", []):
-            if pattern == "common_neighbors":
-                for t in row["targets"]:
-                    if row.get("direction") == "out":
-                        edges.append((t["entity_id"], row["relation"], row["entity_id"]))
-                    else:
-                        edges.append((row["entity_id"], row["relation"], t["entity_id"]))
-            elif pattern == "two_hop":
-                edges.append((row["source"]["entity_id"], row["first_relation"], row["via"]["entity_id"]))
-                edges.append((row["via"]["entity_id"], row["relation"], row["target"]["entity_id"]))
-            else:
-                edges.append(_oriented(row))
-    elif result["route"] == "graph_guided_hybrid":
-        edges.extend(_oriented(row) for row in result.get("edges", []))
+    for row in rows:
+        path = row.get("path", [])
+        edges.extend((a, "DEPENDS_ON", b) for a, b in zip(path, path[1:]))
+        edges.extend((row["version_id"], "HAS_VULNERABILITY", v) for v in _advisory_ids(row))
     return edges
-
-
-def _oriented(row: dict) -> tuple[str, str, str]:
-    source_id = row["source"]["entity_id"]
-    if row["direction"] == "out":
-        return (source_id, row["relation"], row["entity_id"])
-    return (row["entity_id"], row["relation"], source_id)
 
 
 def result_subgraph(result: dict, store: GraphStore) -> dict:
@@ -50,5 +50,5 @@ def result_subgraph(result: dict, store: GraphStore) -> dict:
             "canonical_name": entity.get("canonical_name", node_id),
             "entity_type": entity.get("entity_type"),
         })
-    edges = [{"source": s, "target": o, "relation": relation or "related to"} for s, relation, o in triples]
+    edges = [{"source": s, "target": o, "relation": relation} for s, relation, o in triples]
     return {"nodes": nodes, "edges": edges}

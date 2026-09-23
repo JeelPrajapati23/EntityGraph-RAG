@@ -3,7 +3,7 @@
 Each variant is an embedding model plus how chunks are fed to it, so the
 choice can be measured (scripts/eval_advisory_retrieval.py):
 
-- minilm_whole: one vector per raw chunk, what the finance pipeline did.
+- minilm_whole: one vector per raw chunk (MiniLM silently truncates long ones).
   all-MiniLM-L6-v2 reads 256 word-pieces and the HF endpoint silently drops
   the rest, so for long chunks only the first ~150 words count.
 - minilm_windowed: each chunk split into ~110-word windows, each starting

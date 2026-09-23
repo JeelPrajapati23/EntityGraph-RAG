@@ -24,7 +24,7 @@ PROVENANCE_FIELDS = ("source_chunk_id", "source_doc_id", "source_url", "extracti
 
 
 def provenance_entry(edge: dict) -> dict:
-    """The edge's provenance fields. Finance edges have all but source_url; DepGraph edges vary by type."""
+    """The edge's provenance fields. Which ones are set varies by edge type (e.g. only llm edges have a chunk id)."""
     entry = {k: edge[k] for k in PROVENANCE_FIELDS if edge.get(k) is not None}
     entry.setdefault("confidence", DEFAULT_CONFIDENCE)
     return entry

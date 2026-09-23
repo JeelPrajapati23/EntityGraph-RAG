@@ -48,9 +48,19 @@ def test_v2_loader_reads_extraction_and_property_values(schema):
     assert set(schema.node_types["ExploitCondition"].property_values["category"]) == CATEGORIES
 
 
-def test_v1_edges_default_to_llm():
-    v1 = load_schema()
-    assert set(v1.llm_edge_types()) == set(v1.edge_types)
+def test_edges_without_an_extraction_method_default_to_llm(tmp_path):
+    path = tmp_path / "schema.yaml"
+    path.write_text("""
+version: 9
+node_types:
+  A: {description: a}
+edge_types:
+  LINKS: {subject: A, object: A, description: links}
+  BUILT: {subject: A, object: A, description: built, extraction: deterministic}
+edge_properties: []
+""", encoding="utf-8")
+    schema = load_schema(path)
+    assert set(schema.llm_edge_types()) == {"LINKS"}
 
 
 def test_model_is_generated_from_llm_edges_only(model):

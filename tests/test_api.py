@@ -5,117 +5,110 @@ from fastapi.testclient import TestClient
 import reachfix.api.app as app_module
 from reachfix.api import Resources, create_app
 from reachfix.api.views import result_subgraph
+from reachfix.depgraph import DepGraphContext
 from reachfix.graph import NetworkXGraphStore
-from reachfix.router import EntityLookup
+from reachfix.npm.graph_load import to_entity
+from reachfix.npm.lookup import NodeLookup
 
-ENTITIES = [
-    {"entity_id": "Company:tsmc", "canonical_name": "TSMC", "entity_type": "Company", "aliases": ["TSMC"]},
-    {"entity_id": "Company:nvidia", "canonical_name": "NVIDIA", "entity_type": "Company", "aliases": ["NVIDIA"]},
+# axios@0.21.1 -> follow-redirects@1.13.1 [GHSA-74fj / CVE-2022-0155]
+NODES = [
+    {"node_id": "npm:axios@0.21.1", "node_type": "PackageVersion", "name": "axios@0.21.1",
+     "aliases": ["axios@0.21.1"], "properties": {"is_root": True, "in_tree": True}},
+    {"node_id": "npm:follow-redirects@1.13.1", "node_type": "PackageVersion", "name": "follow-redirects@1.13.1",
+     "aliases": ["follow-redirects@1.13.1"], "properties": {"in_tree": True}},
+    {"node_id": "GHSA-74fj-2j2h-c42q", "node_type": "Vulnerability", "name": "GHSA-74fj-2j2h-c42q",
+     "aliases": ["GHSA-74fj-2j2h-c42q", "CVE-2022-0155"], "properties": {"aliases": ["CVE-2022-0155"]}},
 ]
-EDGE = {
-    "subject_id": "Company:tsmc", "object_id": "Company:nvidia", "relation": "SUPPLIES",
-    "confidence": 0.9, "source_chunk_id": "c1", "source_doc_id": "d1", "extracted_at": "t",
-}
-TSMC = {"entity_id": "Company:tsmc", "canonical_name": "TSMC"}
-NVIDIA = {"entity_id": "Company:nvidia", "canonical_name": "NVIDIA"}
-RELATIONAL_RESULT = {
-    "route": "relational", "pattern": "neighbors", "query": "who supplies NVIDIA?",
-    "classification_reasoning": "asks for a relation",
-    "results": [{**TSMC, "source": NVIDIA, "relation": "SUPPLIES", "direction": "in", "confidence": 0.9,
-                 "provenance": [{"source_chunk_id": "c1"}]}],
+EDGES = [
+    {"subject_id": "npm:axios@0.21.1", "relation": "DEPENDS_ON", "object_id": "npm:follow-redirects@1.13.1",
+     "source_doc_id": "lockfile:npm:axios@0.21.1", "properties": {"lockfile_doc_ids": ["lockfile:npm:axios@0.21.1"]}},
+    {"subject_id": "npm:follow-redirects@1.13.1", "relation": "HAS_VULNERABILITY", "object_id": "GHSA-74fj-2j2h-c42q",
+     "source_doc_id": "GHSA-74fj-2j2h-c42q", "properties": {"lockfile_doc_ids": ["lockfile:npm:axios@0.21.1"]}},
+]
+PATH = ["npm:axios@0.21.1", "npm:follow-redirects@1.13.1"]
+EXPOSURE_RESULT = {
+    "query": "Is axios@0.21.1 exposed to CVE-2022-0155?", "route": "relational", "executed_route": "relational",
+    "pattern": "exposure", "executed_pattern": "exposure", "classification_reasoning": "names a project and a CVE",
+    "warnings": [], "results": [{"project": PATH[0], "version_id": PATH[1], "vulnerability_id": "GHSA-74fj-2j2h-c42q",
+                                 "path": PATH, "depth": 1}],
 }
 
 
 @pytest.fixture
 def store():
     store = NetworkXGraphStore()
-    store.load(ENTITIES, [EDGE])
+    store.load([to_entity(n) for n in NODES], EDGES)
     return store
 
 
 @pytest.fixture
 def client(store):
-    resources = Resources(
-        chunks_by_id={"c1": {"chunk_id": "c1"}}, entity_lookup=EntityLookup(ENTITIES), store=store,
-        index=None, schema=None, client=None, embedding_client=None,
-    )
-    with TestClient(create_app(resources)) as test_client:
+    ctx = DepGraphContext(store=store, lookup=NodeLookup(NODES), index=None,
+                          chunks_by_id={"GHSA-74fj-2j2h-c42q::0": {"chunk_id": "GHSA-74fj-2j2h-c42q::0",
+                                                                     "doc_id": "GHSA-74fj-2j2h-c42q"}},
+                          embedding_client=None)
+    with TestClient(create_app(Resources(ctx=ctx, schema=None, client=None))) as test_client:
         yield test_client
 
 
 def test_health_reports_sizes(client):
-    assert client.get("/health").json() == {"status": "ok", "nodes": 2, "edges": 1, "chunks": 1}
+    assert client.get("/health").json() == {"status": "ok", "nodes": 3, "edges": 2, "advisory_chunks": 1,
+                                            "remediation": False}
 
 
 def test_index_serves_demo_page(client):
     resp = client.get("/")
-    assert resp.status_code == 200
-    assert "reachfix" in resp.text
+    assert resp.status_code == 200 and "reachfix" in resp.text
 
 
-def test_explore_resolves_alias_and_returns_subgraph(client):
-    body = client.get("/graph/explore", params={"entity": "nvidia"}).json()
+def test_explore_resolves_a_cve_to_its_advisory(client):
+    body = client.get("/graph/explore", params={"entity": "cve-2022-0155"}).json()
 
-    assert body["entity_id"] == "Company:nvidia"
-    assert {n["entity_id"] for n in body["nodes"]} == {"Company:nvidia", "Company:tsmc"}
-    assert body["edges"] == [{"source": "Company:tsmc", "target": "Company:nvidia", "relation": "SUPPLIES",
-                              "confidence": 0.9, "n_citations": 1}]
+    assert body["entity_id"] == "GHSA-74fj-2j2h-c42q" and body["matches"] == ["GHSA-74fj-2j2h-c42q"]
+    assert {n["entity_id"] for n in body["nodes"]} == {"GHSA-74fj-2j2h-c42q", "npm:follow-redirects@1.13.1"}
+    assert body["edges"][0]["relation"] == "HAS_VULNERABILITY"
 
 
 def test_explore_unknown_entity_is_404(client):
-    assert client.get("/graph/explore", params={"entity": "Zzyzx Holdings"}).status_code == 404
+    assert client.get("/graph/explore", params={"entity": "left-pad@9.9.9"}).status_code == 404
 
 
 def test_query_returns_answer_citations_and_subgraph(client, monkeypatch):
-    monkeypatch.setattr(app_module, "route_query", lambda *a, **k: dict(RELATIONAL_RESULT))
+    monkeypatch.setattr(app_module, "route_query", lambda *a, **k: dict(EXPOSURE_RESULT))
     monkeypatch.setattr(app_module, "synthesize_answer", lambda result, **k: {
-        "query": result["query"], "route": result["route"], "answer": "TSMC supplies NVIDIA.",
-        "citations": {"chunks": [], "graph_paths": ["TSMC --SUPPLIES--> NVIDIA"]},
-    })
+        "query": result["query"], "route": result["route"], "executed_route": result["executed_route"],
+        "answer": "Yes, through follow-redirects@1.13.1 [G1].", "checks": {}, "totals": [], "citations": {},
+        "warnings": []})
 
-    body = client.post("/query", json={"query": "who supplies NVIDIA?"}).json()
+    body = client.post("/query", json={"query": EXPOSURE_RESULT["query"]}).json()
 
-    assert body["answer"] == "TSMC supplies NVIDIA."
-    assert body["route"] == "relational"
-    assert body["classification_reasoning"] == "asks for a relation"
-    assert body["subgraph"]["edges"] == [{"source": "Company:tsmc", "target": "Company:nvidia", "relation": "SUPPLIES"}]
+    assert body["answer"].startswith("Yes") and body["executed_pattern"] == "exposure"
+    assert body["classification_reasoning"] == "names a project and a CVE"
+    assert body["subgraph"]["edges"] == [
+        {"source": PATH[0], "target": PATH[1], "relation": "DEPENDS_ON"},
+        {"source": PATH[1], "target": "GHSA-74fj-2j2h-c42q", "relation": "HAS_VULNERABILITY"},
+    ]
 
 
 def test_query_rejects_empty_query(client):
     assert client.post("/query", json={"query": ""}).status_code == 422
 
 
-def test_result_subgraph_two_hop(store):
-    result = {"route": "relational", "pattern": "two_hop", "results": [{
-        "source": {"entity_id": "Company:tsmc"}, "via": {"entity_id": "Company:nvidia"},
-        "target": {"entity_id": "Company:x"}, "first_relation": "SUPPLIES", "relation": "SUPPLIES",
-    }]}
-
-    sub = result_subgraph(result, store)
-
-    assert [(e["source"], e["target"]) for e in sub["edges"]] == [
-        ("Company:tsmc", "Company:nvidia"), ("Company:nvidia", "Company:x"),
-    ]
-    unknown = next(n for n in sub["nodes"] if n["entity_id"] == "Company:x")
-    assert unknown["canonical_name"] == "Company:x"
+def test_result_subgraph_remediation_rows_link_to_their_advisories(store):
+    result = {"executed_route": "relational", "executed_pattern": "remediation", "results": [
+        {"version_id": PATH[1], "path": PATH, "advisories": [{"vulnerability_id": "GHSA-74fj-2j2h-c42q"}]}]}
+    edges = result_subgraph(result, store)["edges"]
+    assert [(e["source"], e["relation"]) for e in edges] == [(PATH[0], "DEPENDS_ON"), (PATH[1], "HAS_VULNERABILITY")]
 
 
-def test_result_subgraph_common_neighbors_shared_object(store):
-    result = {"route": "relational", "pattern": "common_neighbors", "results": [
-        {"entity_id": "Company:x", "relation": "DISCLOSED_RISK", "direction": "out", "targets": [TSMC, NVIDIA]},
-    ]}
-    assert [(e["source"], e["target"]) for e in result_subgraph(result, store)["edges"]] == [
-        ("Company:tsmc", "Company:x"), ("Company:nvidia", "Company:x"),
-    ]
+def test_result_subgraph_orients_neighbor_rows(store):
+    result = {"executed_route": "relational", "executed_pattern": "neighbors", "results": [
+        {"source": {"node_id": "GHSA-74fj-2j2h-c42q"}, "node_id": PATH[1], "relation": "HAS_VULNERABILITY",
+         "direction": "in"}]}
+    assert result_subgraph(result, store)["edges"] == [
+        {"source": PATH[1], "target": "GHSA-74fj-2j2h-c42q", "relation": "HAS_VULNERABILITY"}]
 
 
-def test_result_subgraph_dedupes_hybrid_edges_seen_from_both_ends(store):
-    result = {"route": "graph_guided_hybrid", "edges": [
-        {**NVIDIA, "source": TSMC, "relation": "SUPPLIES", "direction": "out"},
-        {**TSMC, "source": NVIDIA, "relation": "SUPPLIES", "direction": "in"},
-    ]}
-    assert len(result_subgraph(result, store)["edges"]) == 1
-
-
-def test_result_subgraph_semantic_is_empty(store):
-    assert result_subgraph({"route": "semantic", "chunks": []}, store) == {"nodes": [], "edges": []}
+def test_result_subgraph_is_empty_for_text_routes(store):
+    assert result_subgraph({"executed_route": "semantic", "chunks": []}, store) == {"nodes": [], "edges": []}
+    assert result_subgraph({"executed_route": "graph_guided_hybrid", "advisories": []}, store)["edges"] == []

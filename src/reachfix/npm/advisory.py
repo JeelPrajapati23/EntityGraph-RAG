@@ -16,7 +16,7 @@ incident boilerplate, not a description of when a flaw is exploitable.
 import re
 from dataclasses import dataclass
 
-MAX_CHUNK_WORDS = 450  # same budget as the finance pipeline's filing chunks
+MAX_CHUNK_WORDS = 450
 
 OSV_WEB = "https://osv.dev/vulnerability/"
 MALICIOUS_PREFIX = "MAL-"

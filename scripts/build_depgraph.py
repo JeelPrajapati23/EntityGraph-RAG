@@ -2,8 +2,7 @@
 
 Reads data/processed/depgraph/nodes.jsonl (from scripts/resolve_nodes.py)
 and the edge files from Phases 2-4, loads them into a NetworkXGraphStore,
-and saves it to data/processed/depgraph/graph.pkl. The finance graph at
-data/processed/graph.pkl is not touched.
+and saves it to data/processed/depgraph/graph.pkl.
 
 Then it checks, per corpus root, that a lockfile-scoped DEPENDS_ON walk
 reaches exactly the versions that lockfile installs (read from the raw

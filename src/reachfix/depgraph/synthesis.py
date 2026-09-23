@@ -1,6 +1,6 @@
 """Turn a DepGraph router result into a cited answer (Phase 8).
 
-Three things are kept apart, as in the finance synthesis:
+Three things are kept apart:
 - Evidence for the model: numbered graph facts [G1..] (readable dependency
   chains, relations) and advisory chunks [A1..] with their full text.
 - Exact totals, never computed by the model. react-scripts alone has 177

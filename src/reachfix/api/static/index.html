@@ -41,25 +41,30 @@
   ul { padding-left: 18px; margin: 0; }
   li { margin-bottom: 8px; }
   code { font-size: 13px; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 13px; margin-top: 16px; }
+  .sev { font-size: 12px; font-weight: 600; }
   #graph { flex: 1; min-height: 300px; margin-top: 12px; border: 1px solid var(--border); border-radius: 6px; }
 </style>
 </head>
 <body>
 <header>
   <h1>reachfix</h1>
-  <p>Hybrid vector + graph retrieval over SEC filings and earnings calls. Every answer cites its chunks and graph paths.</p>
+  <p>Which npm projects a vulnerability reaches, through which dependency chain, and the smallest upgrade that fixes it.
+     Every answer cites graph facts [G#] and advisory text [A#].</p>
 </header>
 <main>
   <section>
     <form id="ask">
-      <input id="q" placeholder="Ask a question, e.g. what risks does NVIDIA disclose?" autocomplete="off">
+      <input id="q" placeholder="e.g. How do I fix CVE-2024-45296 in express@4.17.1?" autocomplete="off">
       <button id="ask-btn">Ask</button>
     </form>
-    <div id="output"><p class="muted">The graph panel shows the traversal behind relational and hybrid answers.</p></div>
+    <div id="output"><p class="muted">Try: "Is axios@0.21.1 exposed to CVE-2022-0155?", "Which projects are affected by
+      CVE-2022-24999?", "What should mocha 8.4.0 upgrade to so it stops pulling in a vulnerable minimatch?".
+      The graph panel shows the dependency chains behind graph answers.</p></div>
   </section>
   <section>
     <form id="explore">
-      <input id="entity" placeholder="Explore an entity, e.g. NVIDIA" autocomplete="off">
+      <input id="entity" placeholder="Explore a package, version or advisory, e.g. follow-redirects@1.13.1" autocomplete="off">
       <button id="explore-btn">Explore</button>
     </form>
     <div id="graph-caption" class="muted" style="margin-top:8px"></div>
@@ -67,8 +72,9 @@
   </section>
 </main>
 <script>
-const TYPE_COLORS = { Company: "#2f5fd0", Person: "#1f8a5b", Product: "#b5621b", Location: "#7a4fc4",
-                      RiskFactor: "#c0392b", Auditor: "#5c6770" };
+const TYPE_COLORS = { Package: "#7a4fc4", PackageVersion: "#2f5fd0", Vulnerability: "#c0392b",
+                      Maintainer: "#1f8a5b", License: "#5c6770", ExploitCondition: "#b5621b" };
+const SEV_COLORS = { CRITICAL: "#c0392b", HIGH: "#d35400", MODERATE: "#b7950b", LOW: "#5c6770" };
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const textColor = () => getComputedStyle(document.documentElement).getPropertyValue("--text").trim();
 
@@ -110,19 +116,32 @@ document.getElementById("ask").addEventListener("submit", async ev => {
   try {
     const r = await call("/query", { method: "POST", headers: { "Content-Type": "application/json" },
                                      body: JSON.stringify({ query }) });
-    const paths = r.citations.graph_paths.map(p => `<li><code>${esc(p)}</code></li>`).join("");
-    const chunks = r.citations.chunks.map((c, i) => `
-      <li><strong>[chunk ${i + 1}]</strong> ${esc(c.ticker)} ${esc(c.form)} · ${esc(c.section)}
-        · <a href="${esc(c.source_url)}" target="_blank" rel="noopener">source</a>
-        <div class="muted">${esc(c.snippet)}…</div></li>`).join("");
+    const c = r.citations, SHOW = 15;
+    const chains = c.dependency_chains.slice(0, SHOW).map(p => `<li><code>${esc(p)}</code></li>`).join("");
+    const advisories = c.advisories.slice(0, SHOW).map(a => `
+      <li><a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.id)}</a>
+        ${a.aliases.filter(x => x.startsWith("CVE-")).map(esc).join(" ")}
+        <span class="sev" style="color:${SEV_COLORS[a.severity] ?? "inherit"}">${esc(a.severity ?? "unlabeled")}</span>
+        <div class="muted">${esc(a.summary)}</div></li>`).join("");
+    const facts = c.graph_facts.map(f => `<li><strong>[${esc(f.marker)}]</strong> ${esc(f.fact)}</li>`).join("");
+    const chunks = c.chunks.map(ch => `
+      <li><strong>[${esc(ch.marker)}]</strong> <a href="${esc(ch.url)}" target="_blank" rel="noopener">${esc(ch.advisory)}</a>
+        <div class="muted">${esc(ch.snippet)}…</div></li>`).join("");
+    const k = r.checks, flagged = [...k.ungrounded_ids, ...k.ungrounded_versions, ...k.unknown_markers];
+    const pattern = r.executed_pattern ? ` / ${r.executed_pattern}` : "";
+    const more = (list, n) => list.length > n ? `<p class="muted">and ${list.length - n} more</p>` : "";
     out.innerHTML = `
-      <span class="badge">${esc(r.route)}</span>
+      <span class="badge">${esc(r.executed_route + pattern)}</span>
       <div class="muted">${esc(r.classification_reasoning)}</div>
-      ${r.warning ? `<div class="warn">${esc(r.warning)}</div>` : ""}
+      ${r.warnings.map(w => `<div class="warn">${esc(w)}</div>`).join("")}
+      ${flagged.length ? `<div class="warn">Not found in the evidence: ${esc(flagged.join(", "))}</div>` : ""}
       <div class="answer">${esc(r.answer)}</div>
-      ${paths ? `<h3>Graph paths</h3><ul>${paths}</ul>` : ""}
-      ${chunks ? `<h3>Chunks</h3><ul>${chunks}</ul>` : ""}`;
-    if (r.subgraph.nodes.length) drawGraph(r.subgraph, `Traversal behind this answer (${r.route})`);
+      ${r.totals.length ? `<h3>Exact totals</h3><ul>${r.totals.map(t => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
+      ${chains ? `<h3>Dependency chains</h3><ul>${chains}</ul>${more(c.dependency_chains, SHOW)}` : ""}
+      ${advisories ? `<h3>Advisories</h3><ul>${advisories}</ul>${more(c.advisories, SHOW)}` : ""}
+      ${facts ? `<details><summary>Graph facts given to the model (${c.graph_facts.length})</summary><ul>${facts}</ul></details>` : ""}
+      ${chunks ? `<h3>Advisory text</h3><ul>${chunks}</ul>` : ""}`;
+    if (r.subgraph.nodes.length) drawGraph(r.subgraph, `Dependency chains behind this answer (${r.executed_route}${pattern})`);
   } catch (err) {
     out.innerHTML = `<p class="warn">${esc(err.message)}</p>`;
   } finally {
@@ -135,8 +154,9 @@ document.getElementById("explore").addEventListener("submit", async ev => {
   const entity = document.getElementById("entity").value.trim();
   if (!entity) return;
   try {
-    const r = await call(`/graph/explore?entity=${encodeURIComponent(entity)}&depth=2`);
-    drawGraph(r, `Neighborhood of ${r.entity_id} (2 hops)`, r.entity_id);
+    const r = await call(`/graph/explore?entity=${encodeURIComponent(entity)}&depth=1`);
+    const others = r.matches.length > 1 ? ` (also matches ${r.matches.slice(1).join(", ")})` : "";
+    drawGraph(r, `Neighborhood of ${r.entity_id}, 1 hop${others}`, r.entity_id);
   } catch (err) {
     document.getElementById("graph-caption").textContent = err.message;
   }

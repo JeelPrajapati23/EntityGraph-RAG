@@ -17,10 +17,10 @@ from advisory free text, and writing answers that cite the graph facts and
 advisory text they rest on. See [`docs/dataset.md`](docs/dataset.md) and
 [`schema/v2.yaml`](schema/v2.yaml).
 
-This project shares ingestion and evaluation philosophy with a sibling
-legal-RAG project (ClauseIQ) — same discipline around chunking, provenance,
-and golden-set evaluation, different retrieval strategy (graph-guided hybrid
-retrieval instead of pure vector search).
+This project shares its evaluation discipline with a sibling legal-RAG
+project (ClauseIQ): provenance on every fact and checked, graph-derived eval
+sets, with a different retrieval strategy (graph-guided hybrid retrieval
+instead of pure vector search).
 
 ## Status
 
@@ -44,8 +44,8 @@ The npm pipeline ("DepGraph") runs end to end over 20 date-pinned projects
   `[A#]` advisory text with osv.dev links. They are checked for advisory
   ids and package versions that aren't in the evidence.
 
-The engine was first built on SEC filings (schema v1). That finance
-pipeline is still in the repo and is being removed.
+The engine was first built on SEC filings and earnings calls. That finance
+pipeline was removed after the retarget, and it is in the git history.
 
 ## Try it
 
@@ -54,19 +54,28 @@ uv run python scripts/ask_depgraph.py "Is axios@0.21.1 exposed to CVE-2022-0155?
 uv run python scripts/ask_depgraph.py "How do I fix CVE-2024-45296 in express@4.17.1?"
 ```
 
-The build scripts that produce `data/` are listed in order in
-[`docs/dataset.md`](docs/dataset.md).
+Or serve the chat + graph demo page and HTTP API (`/query`,
+`/graph/explore`, `/health`) at http://127.0.0.1:8000:
 
-## Architecture (evolving)
+```bash
+uv run reachfix
+```
+
+Both need the built data under `data/processed/depgraph/`. The build
+scripts are listed in order in [`docs/dataset.md`](docs/dataset.md).
+
+## Architecture
 
 ```
-documents → ingestion/chunking → entity & relation extraction → knowledge graph
-                                                                       │
-query ──► router (semantic / relational / graph-guided hybrid) ◄──────┘
-                                │
-                    retrieval (vector / graph / both)
-                                │
-                    answer synthesis + citations (text + graph path)
+lockfiles (npm --before) ─┐
+OSV advisories ───────────┼─► deterministic/derived edges ─┐
+npm registry metadata ────┘                                ├─► graph (NetworkX) ─┐
+advisory text ─► chunks ─► LLM exploit conditions ─────────┘                     │
+advisory text ─► windowed embeddings ─► vector index ─────────────────────────┐  │
+                                                                              ▼  ▼
+query ──► router (semantic / relational / graph-guided hybrid) ──► retrieval + remediation plans
+                                                                              │
+                                              cited answer ([G#] graph facts, [A#] advisory text)
 ```
 
 ## Setup
@@ -78,8 +87,8 @@ environment management.
 uv sync
 ```
 
-Generation (extraction, router classification, answer synthesis, eval
-judging) runs on Groq (`openai/gpt-oss-120b`), and embeddings run on the
+Generation (exploit-condition extraction, router classification, answer
+synthesis) runs on Groq (`openai/gpt-oss-120b`), and embeddings run on the
 Hugging Face Inference API (`sentence-transformers/all-MiniLM-L6-v2`) —
 copy `.env.example` to `.env` and set `GROQ_API_KEY` and `HF_TOKEN`.
 

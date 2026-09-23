@@ -113,8 +113,8 @@ uv run python scripts/build_advisory_chunks.py   # → data/processed/depgraph/a
 ```
 
 Both read the Phase 1 manifests and fully rewrite their output each run.
-Outputs go under `data/processed/depgraph/` so they don't collide with the
-finance pipeline's `data/processed/` files.
+Outputs go under `data/processed/depgraph/` (kept apart from the finance
+pipeline's `data/processed/` files while both existed).
 
 **Dependency edges** (`reachfix.npm.dependencies`). For each
 dependency an installed package declares, the resolver finds the copy
@@ -395,8 +395,8 @@ uv run python scripts/route_depgraph.py "Is axios@0.21.1 exposed to CVE-2022-015
 uv run python scripts/eval_depgraph_router.py                                          # eval/depgraph_questions.yaml
 ```
 
-`reachfix.depgraph` is a separate router from the finance one
-(`router/`). The finance router's `neighbors`/`two_hop`/`common_neighbors`
+`reachfix.depgraph` was built as a separate router from the finance one
+(`router/`, since removed). The finance router's `neighbors`/`two_hop`/`common_neighbors`
 patterns can't express "exposed through a dependency 9 hops deep in this
 project's lockfile". Its shape is kept: one Groq classification call,
 Literal types generated from the schema, one retry, then a fall-back to

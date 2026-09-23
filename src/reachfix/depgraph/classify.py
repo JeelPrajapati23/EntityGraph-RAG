@@ -1,10 +1,9 @@
 """LLM query classification for the DepGraph router.
 
-Same approach as the finance router (router/classify.py): the output model's
-Literal types come from the schema, so the classifier can't propose an
-edge type outside schema/v2.yaml. The graph patterns are DepGraph's own:
-dependency questions need lockfile-scoped, many-hop traversal (graph/exposure.py),
-which the finance neighbors / two_hop / common_neighbors patterns can't express.
+The output model's Literal types come from the schema, so the classifier
+can't propose an edge type outside schema/v2.yaml. The graph patterns are
+built for dependency questions, which need lockfile-scoped, many-hop
+traversal (graph/exposure.py) rather than fixed one- or two-hop lookups.
 """
 
 from typing import Literal
