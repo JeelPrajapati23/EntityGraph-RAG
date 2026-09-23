@@ -9,6 +9,9 @@ from entitygraph_rag.api.ingest import IngestInProgressError, IngestManager, Ing
 from entitygraph_rag.graph import NetworkXGraphStore
 from entitygraph_rag.router import EntityLookup
 
+KEY = "test-ingest-key"
+AUTH = {"X-API-Key": KEY}
+
 
 def _resources(n_chunks: int) -> Resources:
     return Resources(
@@ -139,32 +142,32 @@ def test_api_ingest_swaps_resources_on_success(processed_dir):
         return 0
 
     manager = _manager(processed_dir, run_step, loader=lambda: _resources(7))
-    with TestClient(create_app(_resources(1), ingest_manager=manager)) as client:
-        resp = client.post("/ingest", json={"skip_fetch": True})
+    with TestClient(create_app(_resources(1), ingest_manager=manager, ingest_api_key=KEY)) as client:
+        resp = client.post("/ingest", headers=AUTH, json={"skip_fetch": True})
         assert resp.status_code == 202
         job_id = resp.json()["job_id"]
 
-        assert client.post("/ingest", json={}).status_code == 409
+        assert client.post("/ingest", headers=AUTH, json={}).status_code == 409
         assert client.get("/health").json()["chunks"] == 1  # still serving old artifacts
 
         release.set()
         manager.wait(job_id, timeout=5)
 
-        assert client.get(f"/ingest/{job_id}").json()["status"] == "succeeded"
+        assert client.get(f"/ingest/{job_id}", headers=AUTH).json()["status"] == "succeeded"
         assert client.get("/health").json()["chunks"] == 7
-        assert [job["job_id"] for job in client.get("/ingest").json()] == [job_id]
+        assert [job["job_id"] for job in client.get("/ingest", headers=AUTH).json()] == [job_id]
 
 
 def test_api_ingest_unknown_job_is_404(processed_dir):
     manager = _manager(processed_dir, lambda argv, on_line: 0)
-    with TestClient(create_app(_resources(1), ingest_manager=manager)) as client:
-        assert client.get("/ingest/nope").status_code == 404
+    with TestClient(create_app(_resources(1), ingest_manager=manager, ingest_api_key=KEY)) as client:
+        assert client.get("/ingest/nope", headers=AUTH).status_code == 404
 
 
 def test_api_ingest_validates_body(processed_dir):
     manager = _manager(processed_dir, lambda argv, on_line: 0)
-    with TestClient(create_app(_resources(1), ingest_manager=manager)) as client:
-        assert client.post("/ingest", json={"max_per_form": 0}).status_code == 422
+    with TestClient(create_app(_resources(1), ingest_manager=manager, ingest_api_key=KEY)) as client:
+        assert client.post("/ingest", headers=AUTH, json={"max_per_form": 0}).status_code == 422
 
 
 def test_second_success_replaces_previous_backup(processed_dir):
@@ -182,3 +185,21 @@ def test_second_success_replaces_previous_backup(processed_dir):
     assert (processed_dir / "chunks.jsonl").read_text(encoding="utf-8") == "2"
     assert (processed_dir.parent / "processed.prev" / "chunks.jsonl").read_text(encoding="utf-8") == "1"
     assert sorted(p.name for p in processed_dir.parent.iterdir()) == ["processed", "processed.prev"]
+
+
+def test_api_ingest_rejects_missing_or_wrong_key(processed_dir):
+    manager = _manager(processed_dir, lambda argv, on_line: 0)
+    with TestClient(create_app(_resources(1), ingest_manager=manager, ingest_api_key=KEY)) as client:
+        assert client.post("/ingest", json={}).status_code == 401
+        assert client.post("/ingest", headers={"X-API-Key": "wrong"}, json={}).status_code == 401
+        assert client.get("/ingest").status_code == 401
+        assert client.get("/ingest/nope").status_code == 401
+    assert manager.all_jobs() == []
+
+
+def test_api_ingest_disabled_without_configured_key(processed_dir, monkeypatch):
+    monkeypatch.delenv("INGEST_API_KEY", raising=False)
+    manager = _manager(processed_dir, lambda argv, on_line: 0)
+    with TestClient(create_app(_resources(1), ingest_manager=manager)) as client:
+        assert client.post("/ingest", headers=AUTH, json={}).status_code == 503
+        assert client.get("/health").status_code == 200

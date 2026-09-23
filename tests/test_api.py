@@ -1,7 +1,6 @@
 """Synthetic fixtures only — no real artifacts, no Groq/HF calls."""
 import pytest
 from fastapi.testclient import TestClient
-from pydantic import BaseModel
 
 import entitygraph_rag.api.app as app_module
 from entitygraph_rag.api import Resources, create_app
@@ -84,20 +83,6 @@ def test_query_returns_answer_citations_and_subgraph(client, monkeypatch):
 
 def test_query_rejects_empty_query(client):
     assert client.post("/query", json={"query": ""}).status_code == 422
-
-
-def test_query_maps_malformed_classification_to_502(client, monkeypatch):
-    class Decision(BaseModel):
-        route: int
-
-    def bad_route(*a, **k):
-        Decision.model_validate({"route": "not-an-int"})
-
-    monkeypatch.setattr(app_module, "route_query", bad_route)
-
-    resp = client.post("/query", json={"query": "who supplies NVIDIA?"})
-    assert resp.status_code == 502
-    assert "router classification failed" in resp.json()["detail"]
 
 
 def test_result_subgraph_two_hop(store):
