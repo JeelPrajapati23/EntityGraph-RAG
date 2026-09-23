@@ -1,0 +1,477 @@
+{
+  "summary": {
+    "questions": 20,
+    "route_accuracy": 0.95,
+    "pattern_accuracy": 0.95,
+    "checks_passed": 19,
+    "fully_correct": 18,
+    "variant": "minilm_windowed"
+  },
+  "questions": [
+    {
+      "id": "exp-01",
+      "question": "Is axios@0.21.1 exposed to CVE-2022-0155?",
+      "expected_route": "relational",
+      "route": "relational",
+      "executed_route": "relational",
+      "pattern": "exposure",
+      "relation": null,
+      "entities": [
+        {
+          "name": "axios@0.21.1",
+          "node_ids": [
+            "npm:axios@0.21.1"
+          ]
+        },
+        {
+          "name": "CVE-2022-0155",
+          "node_ids": [
+            "GHSA-74fj-2j2h-c42q"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The question asks whether a specific package version falls within the vulnerable range of a named advisory, which is an exposure query."
+    },
+    {
+      "id": "exp-02",
+      "question": "Does express 4.17.1 have a dependency affected by CVE-2024-45296?",
+      "expected_route": "relational",
+      "route": "relational",
+      "executed_route": "relational",
+      "pattern": "exposure",
+      "relation": null,
+      "entities": [
+        {
+          "name": "express@4.17.1",
+          "node_ids": [
+            "npm:express@4.17.1"
+          ]
+        },
+        {
+          "name": "CVE-2024-45296",
+          "node_ids": [
+            "GHSA-37ch-88jc-xwx2",
+            "GHSA-9wv6-86v2-598j"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The question asks if the specific package version is exposed to a particular advisory, which is a classic exposure relational query."
+    },
+    {
+      "id": "exp-03",
+      "question": "List the known vulnerabilities anywhere in the dependency tree of jsonwebtoken@8.5.1.",
+      "expected_route": "relational",
+      "route": "relational",
+      "executed_route": "relational",
+      "pattern": "exposure",
+      "relation": null,
+      "entities": [
+        {
+          "name": "jsonwebtoken@8.5.1",
+          "node_ids": [
+            "npm:jsonwebtoken@8.5.1"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The query asks for vulnerabilities present in the dependency tree of a specific package version, which is a relational exposure question."
+    },
+    {
+      "id": "exp-04",
+      "question": "Is my project on mocha 8.4.0 vulnerable to anything through its transitive dependencies?",
+      "expected_route": "relational",
+      "route": "relational",
+      "executed_route": "relational",
+      "pattern": "exposure",
+      "relation": null,
+      "entities": [
+        {
+          "name": "mocha@8.4.0",
+          "node_ids": [
+            "npm:mocha@8.4.0"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The question asks whether a specific package version is exposed to any vulnerabilities via its dependency tree, which is a crisp graph exposure query."
+    },
+    {
+      "id": "aff-01",
+      "question": "Which projects are affected by CVE-2022-24999?",
+      "expected_route": "relational",
+      "route": "relational",
+      "executed_route": "relational",
+      "pattern": "affected_projects",
+      "relation": null,
+      "entities": [
+        {
+          "name": "CVE-2022-24999",
+          "node_ids": [
+            "GHSA-hrpp-h998-j3pp"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The query asks for the set of projects that a specific advisory (CVE-2022-24999) affects, which is a relational affected_projects pattern."
+    },
+    {
+      "id": "aff-02",
+      "question": "Which of the tracked projects pull in a version of follow-redirects vulnerable to GHSA-74fj-2j2h-c42q?",
+      "expected_route": "relational",
+      "route": "relational",
+      "executed_route": "relational",
+      "pattern": "affected_projects",
+      "relation": null,
+      "entities": [
+        {
+          "name": "GHSA-74fj-2j2h-c42q",
+          "node_ids": [
+            "GHSA-74fj-2j2h-c42q"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The question asks which tracked projects depend on a vulnerable version of follow-redirects linked to a specific advisory, which is an affected_projects relational query."
+    },
+    {
+      "id": "path-01",
+      "question": "How does react-scripts@4.0.3 end up depending on json-schema?",
+      "expected_route": "relational",
+      "route": "relational",
+      "executed_route": "relational",
+      "pattern": "dependency_path",
+      "relation": null,
+      "entities": [
+        {
+          "name": "react-scripts@4.0.3",
+          "node_ids": [
+            "npm:react-scripts@4.0.3"
+          ]
+        },
+        {
+          "name": "json-schema",
+          "node_ids": [
+            "npm:json-schema"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The user asks for the dependency chain linking react-scripts@4.0.3 to json-schema, which is a dependency_path query."
+    },
+    {
+      "id": "path-02",
+      "question": "Through which chain of packages does @angular/cli 11.2.0 pull in ansi-regex?",
+      "expected_route": "relational",
+      "route": "relational",
+      "executed_route": "relational",
+      "pattern": "dependency_path",
+      "relation": null,
+      "entities": [
+        {
+          "name": "@angular/cli@11.2.0",
+          "node_ids": [
+            "npm:@angular/cli@11.2.0"
+          ]
+        },
+        {
+          "name": "ansi-regex",
+          "node_ids": [
+            "npm:ansi-regex"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The question asks for the chain of dependencies linking a specific package version to another, which is a dependency_path relational query."
+    },
+    {
+      "id": "nb-01",
+      "question": "Which version of follow-redirects fixes CVE-2022-0155?",
+      "expected_route": "relational",
+      "route": "relational",
+      "executed_route": "relational",
+      "pattern": "neighbors",
+      "relation": "FIXED_IN",
+      "entities": [
+        {
+          "name": "follow-redirects",
+          "node_ids": [
+            "npm:follow-redirects"
+          ]
+        },
+        {
+          "name": "CVE-2022-0155",
+          "node_ids": [
+            "GHSA-74fj-2j2h-c42q"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The question asks for the version that fixes a specific advisory, which is a neighbor query for the FIXED_IN relation."
+    },
+    {
+      "id": "nb-02",
+      "question": "Who maintains the qs package on npm?",
+      "expected_route": "relational",
+      "route": "relational",
+      "executed_route": "relational",
+      "pattern": "neighbors",
+      "relation": "MAINTAINED_BY",
+      "entities": [
+        {
+          "name": "qs",
+          "node_ids": [
+            "npm:qs"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The question asks for the maintainer of the qs package, which is a direct neighbor relationship."
+    },
+    {
+      "id": "nb-03",
+      "question": "Under what conditions is CVE-2023-26136 exploitable?",
+      "expected_route": "relational",
+      "route": "graph_guided_hybrid",
+      "executed_route": "graph_guided_hybrid",
+      "pattern": null,
+      "relation": null,
+      "entities": [
+        {
+          "name": "CVE-2023-26136",
+          "node_ids": [
+            "GHSA-72xf-g2v4-qvf3"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": false,
+      "pattern_ok": false,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The question asks for the exploit conditions of a specific advisory, which requires advisory text rather than a graph fact."
+    },
+    {
+      "id": "nb-04",
+      "question": "What license is jsonwebtoken 8.5.1 published under?",
+      "expected_route": "relational",
+      "route": "relational",
+      "executed_route": "relational",
+      "pattern": "neighbors",
+      "relation": "LICENSED_UNDER",
+      "entities": [
+        {
+          "name": "jsonwebtoken@8.5.1",
+          "node_ids": [
+            "npm:jsonwebtoken@8.5.1"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The query asks for the license of a specific package version, which is a direct neighbor relationship in the graph."
+    },
+    {
+      "id": "sem-01",
+      "question": "Which advisories describe attackers polluting Object.prototype through crafted __proto__ keys?",
+      "expected_route": "semantic",
+      "route": "semantic",
+      "executed_route": "semantic",
+      "pattern": null,
+      "relation": null,
+      "entities": [],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The query seeks advisories based on their textual description of prototype pollution via __proto__, without referencing specific packages or versions, so it is a semantic text search."
+    },
+    {
+      "id": "sem-02",
+      "question": "How do regular expression denial of service bugs in URL path matching libraries work?",
+      "expected_route": "semantic",
+      "route": "semantic",
+      "executed_route": "semantic",
+      "pattern": null,
+      "relation": null,
+      "entities": [],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The question asks for a general explanation of ReDoS bugs in URL path matching libraries, not about a specific package, version, or advisory."
+    },
+    {
+      "id": "sem-03",
+      "question": "Are there vulnerabilities where authorization headers leak when a client follows a redirect to another host?",
+      "expected_route": "semantic",
+      "route": "semantic",
+      "executed_route": "semantic",
+      "pattern": null,
+      "relation": null,
+      "entities": [],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The query asks about a class of vulnerabilities described in advisory text without referencing specific packages, versions, or advisories."
+    },
+    {
+      "id": "sem-04",
+      "question": "What security problems come from extracting untrusted tar archives?",
+      "expected_route": "semantic",
+      "route": "semantic",
+      "executed_route": "semantic",
+      "pattern": null,
+      "relation": null,
+      "entities": [],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The question asks about general security issues of extracting untrusted tar archives, not about a specific package, version, or advisory."
+    },
+    {
+      "id": "hyb-01",
+      "question": "What kinds of vulnerabilities has lodash had?",
+      "expected_route": "graph_guided_hybrid",
+      "route": "graph_guided_hybrid",
+      "executed_route": "graph_guided_hybrid",
+      "pattern": null,
+      "relation": null,
+      "entities": [
+        {
+          "name": "lodash",
+          "node_ids": [
+            "npm:lodash"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The query asks for descriptive information about vulnerability types affecting lodash, which requires advisory text rather than a direct graph fact."
+    },
+    {
+      "id": "hyb-02",
+      "question": "How could an attacker exploit the vulnerable dependencies of express@4.17.1?",
+      "expected_route": "graph_guided_hybrid",
+      "route": "graph_guided_hybrid",
+      "executed_route": "graph_guided_hybrid",
+      "pattern": null,
+      "relation": null,
+      "entities": [
+        {
+          "name": "express@4.17.1",
+          "node_ids": [
+            "npm:express@4.17.1"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The query asks for an explanation of exploitation methods for vulnerable dependencies of a specific package, which requires advisory text rather than a direct graph fact."
+    },
+    {
+      "id": "hyb-03",
+      "question": "What do the socket.io advisories say about denial of service?",
+      "expected_route": "graph_guided_hybrid",
+      "route": "graph_guided_hybrid",
+      "executed_route": "graph_guided_hybrid",
+      "pattern": null,
+      "relation": null,
+      "entities": [
+        {
+          "name": "socket.io",
+          "node_ids": [
+            "npm:socket.io"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The query asks for advisory text about denial of service for a named package, which fits the graph_guided_hybrid route."
+    },
+    {
+      "id": "hyb-04",
+      "question": "Explain how the follow-redirects vulnerability in axios 0.21.1 could leak data.",
+      "expected_route": "graph_guided_hybrid",
+      "route": "graph_guided_hybrid",
+      "executed_route": "graph_guided_hybrid",
+      "pattern": null,
+      "relation": null,
+      "entities": [
+        {
+          "name": "axios@0.21.1",
+          "node_ids": [
+            "npm:axios@0.21.1"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": false,
+      "failures": [
+        "chunks not about follow-redirects: ['GHSA-p92q-9vqr-4j8v::0', 'GHSA-j5f8-grm9-p9fc::0', 'GHSA-jr5f-v2jv-69x6::0', 'GHSA-j5f8-grm9-p9fc::1']"
+      ],
+      "reasoning": "The query asks for an explanatory description of a known vulnerability affecting a specific package version, which requires advisory text rather than a pure graph lookup."
+    }
+  ]
+}

@@ -136,3 +136,13 @@ def chunk_advisory(record: dict, max_words: int = MAX_CHUNK_WORDS) -> list[Advis
         )
         for index, (headings, text) in enumerate(pack_advisory_units(units, max_words))
     ]
+
+
+def embedding_prefix(chunk: dict) -> str:
+    """What every embedding window of an advisory chunk starts with: its summary and package names.
+
+    31 of 383 chunks never name their own package in the text, so without
+    this a "vulnerabilities in <package>" query can't find them.
+    """
+    packages = ", ".join(chunk.get("affected_packages", []))
+    return f"{chunk.get('summary', '')}\nPackages: {packages}" if packages else chunk.get("summary", "")

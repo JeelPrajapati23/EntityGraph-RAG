@@ -1,0 +1,147 @@
+# DepGraph router questions (Phase 7). Run: uv run python scripts/eval_depgraph_router.py
+#
+# Each question has an expected route (and pattern / relation for
+# relational ones), plus `expect` checks on what the router actually
+# retrieved. The expected facts are read off the graph built in Phase 5 (a
+# lockfile-scoped walk from the root), not hand-judged. For example, the
+# axios -> follow-redirects path is what the resolved lockfile contains.
+#
+# Check kinds (see scripts/eval_depgraph_router.py):
+#   vulnerabilities_include: advisory ids that must appear in the results
+#   path: a dependency path (node ids) that must appear exactly
+#   nodes_include: node ids that must appear as results (neighbors, affected projects)
+#   chunks_affect_package: every returned advisory chunk must affect this package
+#   top_chunk_matches: regex the top chunk's advisory summary or text must match
+#
+# Don't tune the classifier prompt against this set: it's small, and the
+# finance router's history (CLAUDE.md) shows prompt edits trading one
+# question for another. It measures; it isn't a training set.
+
+questions:
+  # relational / exposure
+  - id: exp-01
+    question: "Is axios@0.21.1 exposed to CVE-2022-0155?"
+    route: relational
+    pattern: exposure
+    expect:
+      vulnerabilities_include: [GHSA-74fj-2j2h-c42q]
+      path: ["npm:axios@0.21.1", "npm:follow-redirects@1.13.1"]
+  - id: exp-02
+    question: "Does express 4.17.1 have a dependency affected by CVE-2024-45296?"
+    route: relational
+    pattern: exposure
+    expect:
+      vulnerabilities_include: [GHSA-9wv6-86v2-598j, GHSA-37ch-88jc-xwx2]
+      path: ["npm:express@4.17.1", "npm:path-to-regexp@0.1.7"]
+  - id: exp-03
+    question: "List the known vulnerabilities anywhere in the dependency tree of jsonwebtoken@8.5.1."
+    route: relational
+    pattern: exposure
+    expect:
+      vulnerabilities_include: [GHSA-8cf7-32gw-wr33, GHSA-hjrf-2m68-5959, GHSA-qwph-4952-7xr6, GHSA-869p-cjfg-cm3x, GHSA-c2qf-rxjj-qqgw]
+      path: ["npm:jsonwebtoken@8.5.1", "npm:jws@3.2.2"]
+  - id: exp-04
+    question: "Is my project on mocha 8.4.0 vulnerable to anything through its transitive dependencies?"
+    route: relational
+    pattern: exposure
+
+  # relational / affected_projects
+  - id: aff-01
+    question: "Which projects are affected by CVE-2022-24999?"
+    route: relational
+    pattern: affected_projects
+    expect:
+      vulnerabilities_include: [GHSA-hrpp-h998-j3pp]
+      nodes_include: ["npm:express@4.17.1", "npm:request@2.88.2", "npm:react-scripts@4.0.3"]
+  - id: aff-02
+    question: "Which of the tracked projects pull in a version of follow-redirects vulnerable to GHSA-74fj-2j2h-c42q?"
+    route: relational
+    pattern: affected_projects
+    expect:
+      nodes_include: ["npm:axios@0.21.1", "npm:browser-sync@2.26.14", "npm:karma@5.2.3"]
+
+  # relational / dependency_path
+  - id: path-01
+    question: "How does react-scripts@4.0.3 end up depending on json-schema?"
+    route: relational
+    pattern: dependency_path
+    expect:
+      path: ["npm:react-scripts@4.0.3", "npm:jest@26.6.0", "npm:@jest/core@26.6.3", "npm:jest-config@26.6.3",
+             "npm:jest-environment-jsdom@26.6.2", "npm:jsdom@16.4.0", "npm:request@2.88.2",
+             "npm:http-signature@1.2.0", "npm:jsprim@1.4.1", "npm:json-schema@0.2.3"]
+  - id: path-02
+    question: "Through which chain of packages does @angular/cli 11.2.0 pull in ansi-regex?"
+    route: relational
+    pattern: dependency_path
+    expect:
+      nodes_include: ["npm:ansi-regex@5.0.0", "npm:ansi-regex@3.0.0"]
+
+  # relational / neighbors
+  - id: nb-01
+    question: "Which version of follow-redirects fixes CVE-2022-0155?"
+    route: relational
+    pattern: neighbors
+    relation: FIXED_IN
+    expect:
+      nodes_include: ["npm:follow-redirects@1.14.7"]
+  - id: nb-02
+    question: "Who maintains the qs package on npm?"
+    route: relational
+    pattern: neighbors
+    relation: MAINTAINED_BY
+    expect:
+      nodes_include: ["npm-user:ljharb", "npm-user:nlf"]
+  - id: nb-03
+    question: "Under what conditions is CVE-2023-26136 exploitable?"
+    route: relational
+    pattern: neighbors
+    relation: EXPLOITABLE_WHEN
+  - id: nb-04
+    question: "What license is jsonwebtoken 8.5.1 published under?"
+    route: relational
+    pattern: neighbors
+    relation: LICENSED_UNDER
+    expect:
+      nodes_include: ["license:MIT"]
+
+  # semantic
+  - id: sem-01
+    question: "Which advisories describe attackers polluting Object.prototype through crafted __proto__ keys?"
+    route: semantic
+    expect:
+      top_chunk_matches: "prototype pollution"
+  - id: sem-02
+    question: "How do regular expression denial of service bugs in URL path matching libraries work?"
+    route: semantic
+    expect:
+      top_chunk_matches: "regular expression denial|redos|backtracking"
+  - id: sem-03
+    question: "Are there vulnerabilities where authorization headers leak when a client follows a redirect to another host?"
+    route: semantic
+    expect:
+      top_chunk_matches: "redirect"
+  - id: sem-04
+    question: "What security problems come from extracting untrusted tar archives?"
+    route: semantic
+    expect:
+      top_chunk_matches: "tar"
+
+  # graph_guided_hybrid
+  - id: hyb-01
+    question: "What kinds of vulnerabilities has lodash had?"
+    route: graph_guided_hybrid
+    expect:
+      chunks_affect_package: lodash
+  - id: hyb-02
+    question: "How could an attacker exploit the vulnerable dependencies of express@4.17.1?"
+    route: graph_guided_hybrid
+  - id: hyb-03
+    question: "What do the socket.io advisories say about denial of service?"
+    route: graph_guided_hybrid
+    expect:
+      chunks_affect_package: socket.io
+  - id: hyb-04
+    question: "Explain how the follow-redirects vulnerability in axios 0.21.1 could leak data."
+    route: graph_guided_hybrid
+    expect:
+      chunks_affect_package: follow-redirects

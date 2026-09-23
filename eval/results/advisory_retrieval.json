@@ -1,0 +1,173 @@
+{
+  "k": 5,
+  "variants": {
+    "minilm_whole": {
+      "packages": {
+        "queries": 31,
+        "mean_precision": 0.626,
+        "all_relevant": 6,
+        "none_relevant": 0
+      },
+      "classes": {
+        "queries": 8,
+        "mean_precision": 0.725,
+        "all_relevant": 2,
+        "none_relevant": 0
+      },
+      "class_queries": [
+        {
+          "query": "slow regex that burns CPU on a crafted input string",
+          "precision": 1.0,
+          "base_rate": 0.16
+        },
+        {
+          "query": "attacker adds properties to every object through crafted keys like __proto__",
+          "precision": 0.6,
+          "base_rate": 0.15
+        },
+        {
+          "query": "reading files outside the directory the server is supposed to serve",
+          "precision": 0.8,
+          "base_rate": 0.06
+        },
+        {
+          "query": "injecting script into a page through unsanitized markup",
+          "precision": 1.0,
+          "base_rate": 0.04
+        },
+        {
+          "query": "a server tricked into fetching internal URLs chosen by the attacker",
+          "precision": 0.2,
+          "base_rate": 0.03
+        },
+        {
+          "query": "credentials or cookies sent to another host after following a redirect",
+          "precision": 0.8,
+          "base_rate": 0.08
+        },
+        {
+          "query": "attacker runs arbitrary shell commands on the host",
+          "precision": 0.8,
+          "base_rate": 0.11
+        },
+        {
+          "query": "crashing the process with a huge input that exhausts memory",
+          "precision": 0.6,
+          "base_rate": 0.07
+        }
+      ]
+    },
+    "minilm_windowed": {
+      "packages": {
+        "queries": 31,
+        "mean_precision": 0.735,
+        "all_relevant": 9,
+        "none_relevant": 0
+      },
+      "classes": {
+        "queries": 8,
+        "mean_precision": 0.775,
+        "all_relevant": 4,
+        "none_relevant": 0
+      },
+      "class_queries": [
+        {
+          "query": "slow regex that burns CPU on a crafted input string",
+          "precision": 1.0,
+          "base_rate": 0.16
+        },
+        {
+          "query": "attacker adds properties to every object through crafted keys like __proto__",
+          "precision": 1.0,
+          "base_rate": 0.15
+        },
+        {
+          "query": "reading files outside the directory the server is supposed to serve",
+          "precision": 0.8,
+          "base_rate": 0.06
+        },
+        {
+          "query": "injecting script into a page through unsanitized markup",
+          "precision": 1.0,
+          "base_rate": 0.04
+        },
+        {
+          "query": "a server tricked into fetching internal URLs chosen by the attacker",
+          "precision": 0.2,
+          "base_rate": 0.03
+        },
+        {
+          "query": "credentials or cookies sent to another host after following a redirect",
+          "precision": 1.0,
+          "base_rate": 0.08
+        },
+        {
+          "query": "attacker runs arbitrary shell commands on the host",
+          "precision": 0.6,
+          "base_rate": 0.11
+        },
+        {
+          "query": "crashing the process with a huge input that exhausts memory",
+          "precision": 0.6,
+          "base_rate": 0.07
+        }
+      ]
+    },
+    "bge_m3_whole": {
+      "packages": {
+        "queries": 31,
+        "mean_precision": 0.761,
+        "all_relevant": 10,
+        "none_relevant": 0
+      },
+      "classes": {
+        "queries": 8,
+        "mean_precision": 0.675,
+        "all_relevant": 1,
+        "none_relevant": 1
+      },
+      "class_queries": [
+        {
+          "query": "slow regex that burns CPU on a crafted input string",
+          "precision": 0.8,
+          "base_rate": 0.16
+        },
+        {
+          "query": "attacker adds properties to every object through crafted keys like __proto__",
+          "precision": 0.8,
+          "base_rate": 0.15
+        },
+        {
+          "query": "reading files outside the directory the server is supposed to serve",
+          "precision": 0.8,
+          "base_rate": 0.06
+        },
+        {
+          "query": "injecting script into a page through unsanitized markup",
+          "precision": 0.4,
+          "base_rate": 0.04
+        },
+        {
+          "query": "a server tricked into fetching internal URLs chosen by the attacker",
+          "precision": 0.0,
+          "base_rate": 0.03
+        },
+        {
+          "query": "credentials or cookies sent to another host after following a redirect",
+          "precision": 1.0,
+          "base_rate": 0.08
+        },
+        {
+          "query": "attacker runs arbitrary shell commands on the host",
+          "precision": 0.8,
+          "base_rate": 0.11
+        },
+        {
+          "query": "crashing the process with a huge input that exhausts memory",
+          "precision": 0.8,
+          "base_rate": 0.07
+        }
+      ]
+    }
+  }
+}

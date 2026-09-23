@@ -326,6 +326,122 @@ store, keeping only the first entry's ranges.
   npm:follow-redirects@1.13.1 [VULNERABLE: GHSA-74fj-2j2h-c42q /
   CVE-2022-0155]`.
 
+## Semantic retrieval (Phase 6)
+
+```bash
+uv run python scripts/build_advisory_index.py [--variant NAME | --all]  # → advisory_index_<variant>.*
+uv run python scripts/search_advisories.py "slow regex on crafted input" [--package lodash]
+uv run python scripts/eval_advisory_retrieval.py                          # compares the built variants
+```
+
+The finance retrieval code (`VectorIndex`, `embed_chunks`, the embedding
+cache) is reused unchanged. The new part is what gets embedded.
+
+**Silent truncation.** `all-MiniLM-L6-v2` reads 256 word-pieces, and the
+HF endpoint drops the rest without an error. The 802-word chunk embeds
+identically (cosine 1.0) to its first 150 words. 202 of 383 chunks are
+over 150 words. 31 chunks never name their own package in the text.
+
+**Longer-context models.** Tested for availability on the HF endpoint and
+for how much text they actually read (embedding of the full chunk vs its
+first N words):
+- bge-small/base/large-en-v1.5, all-mpnet-base-v2, mxbai-embed-large-v1
+  and snowflake-arctic-embed-m-v1.5 are all saturated by 300 words
+  (512-token models).
+- `BAAI/bge-m3` (8192 tokens, 1024-dim) keeps reading past 600 words, so
+  it embeds each chunk whole.
+- e5-base-v2, nomic-embed-text, jina-v2, gte-base and Qwen3-Embedding
+  aren't served for feature extraction.
+
+**Variants** (`entitygraph_rag.npm.advisory_index`):
+- `minilm_whole`: the raw chunk, truncated, as the finance pipeline did
+- `minilm_windowed`: ~110-word windows overlapping by 20 words, each
+  prefixed with the advisory's summary and packages. Search rolls window
+  hits up to their parent chunk (`retrieval/windows.py`).
+- `bge_m3_whole`: the whole chunk with the same prefix
+
+**Evaluation** (`scripts/eval_advisory_retrieval.py`). There are no
+hand-labeled judgments, so it uses facts already in the data:
+- 31 package queries ("what security vulnerabilities has <pkg> had?").
+  Relevant means OSV's `affected` lists the package.
+- 8 paraphrased vulnerability-class queries. Relevant means the advisory
+  text matches a pattern whose words the query avoids.
+
+precision@5 over distinct advisories:
+
+| Variant | Package queries | Class queries |
+|---|---|---|
+| `minilm_whole` | 0.626 | 0.725 |
+| `minilm_windowed` | 0.735 | **0.775** |
+| `bge_m3_whole` | **0.761** | 0.675 |
+
+Windowing plus the prefix beats the truncated baseline on both sets.
+bge-m3 edges ahead on package queries but falls behind on class queries
+(it scored 0.40 on XSS, where both MiniLM variants scored 1.00). Package
+questions mostly take the hybrid route, where the graph already limits
+results to that package's advisories. So the semantic route mainly
+serves class-style questions, and **`minilm_windowed` is the default**.
+Eight class queries is a small sample, so the gap between the variants
+is indicative, not conclusive. SSRF is weak for every variant (0.00–0.20;
+only 3% of advisories are SSRF).
+
+The HF endpoint returned an occasional 502, so `embed_texts` now retries
+5xx, timeouts and dropped connections with backoff (not 4xx).
+
+## Hybrid router (Phase 7)
+
+```bash
+uv run python scripts/route_depgraph.py "Is axios@0.21.1 exposed to CVE-2022-0155?"  # one question, what it retrieved
+uv run python scripts/eval_depgraph_router.py                                          # eval/depgraph_questions.yaml
+```
+
+`entitygraph_rag.depgraph` is a separate router from the finance one
+(`router/`). The finance router's `neighbors`/`two_hop`/`common_neighbors`
+patterns can't express "exposed through a dependency 9 hops deep in this
+project's lockfile". Its shape is kept: one Groq classification call,
+Literal types generated from the schema, one retry, then a fall-back to
+semantic search, and a plain `if`/`elif` dispatch.
+
+- **Routes:** `semantic` (advisory text, no named entity), `relational`
+  (a graph fact about named entities) and `graph_guided_hybrid` (named
+  entities, answer from advisory text).
+- **Relational patterns:**
+  - `exposure`: a project's vulnerable dependencies, optionally for a
+    named CVE, with paths
+  - `affected_projects`: which projects an advisory reaches
+  - `dependency_path`: how a project pulls in a package
+  - `neighbors`: one relation such as `FIXED_IN`, `MAINTAINED_BY`,
+    `EXPLOITABLE_WHEN` or `LICENSED_UNDER`
+- **Hybrid** gets its advisory set from the graph, then ranks only those
+  advisories' chunks. A package name means the advisories affecting it. A
+  version means every advisory in its dependency tree.
+- **Walks are lockfile-scoped.** A corpus root walks its own lockfile. A
+  non-root version walks each lockfile it is installed in. A bare package
+  name means its root versions, else all its in-tree versions.
+- Each result records the classified route, the route that actually ran
+  (it falls back to semantic when no named entity resolves), how each
+  entity resolved, and warnings.
+
+**Question set (`eval/depgraph_questions.yaml`, 20 questions).** Expected
+routes are hand-set. The `expect` checks are read off the graph instead of
+being hand-judged: exact paths, advisory ids, nodes. First run
+(2026-09-23, `minilm_windowed` index): route 19/20 and route + pattern
+19/20. Checks passed 19/20 and 18/20 were fully correct. That includes the
+9-hop `react-scripts → … → json-schema@0.2.3` path, all five
+jsonwebtoken advisories, and the three spot-checked projects for
+CVE-2022-24999.
+
+- `nb-03` "Under what conditions is CVE-2023-26136 exploitable?" was
+  routed to hybrid (advisory text) instead of the `EXPLOITABLE_WHEN` edge.
+  That's a defensible reading.
+- `hyb-04` "…the follow-redirects vulnerability in axios 0.21.1…": the
+  classifier extracted only `axios@0.21.1`, so the search was scoped to
+  axios's whole tree and ranked axios's own advisories first. That's an
+  entity-extraction miss.
+
+The prompt was not tuned to fix either one. The set is small, and doing
+that would repeat the finance router's overfitting (see CLAUDE.md).
+
 ## Schema
 
 See [`schema/v2.yaml`](../schema/v2.yaml). Key decisions:

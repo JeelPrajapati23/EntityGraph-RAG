@@ -8,12 +8,35 @@ otherwise unused.
 """
 
 import os
+import time
 
+import httpx
 import numpy as np
 from huggingface_hub import InferenceClient
+from huggingface_hub.errors import HfHubHTTPError, InferenceTimeoutError
 
 DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 DEFAULT_OUTPUT_DIMENSIONALITY = 384  # all-MiniLM-L6-v2's native dimension; used for cache-key namespacing only
+MAX_RETRIES = 4  # transient 5xx / timeouts / dropped connections, with exponential backoff
+
+
+def _is_transient(exc: Exception) -> bool:
+    if isinstance(exc, (InferenceTimeoutError, httpx.TransportError)):
+        return True
+    status = getattr(getattr(exc, "response", None), "status_code", None)
+    return isinstance(exc, HfHubHTTPError) and status is not None and status >= 500
+
+
+def _feature_extraction(client: InferenceClient, text: str, model_name: str, sleep=time.sleep):
+    """One embedding call, retried on transient errors (the HF router returns the odd 502)."""
+    for attempt in range(MAX_RETRIES + 1):
+        try:
+            return client.feature_extraction(text, model=model_name)
+        except Exception as exc:
+            if attempt == MAX_RETRIES or not _is_transient(exc):
+                raise
+            sleep(2 ** attempt)
+    raise AssertionError("unreachable")
 
 
 def build_embedding_client(api_key: str | None = None) -> InferenceClient:
@@ -38,7 +61,7 @@ def embed_texts(
     """
     vectors = []
     for text in texts:
-        result = np.asarray(client.feature_extraction(text, model=model_name))
+        result = np.asarray(_feature_extraction(client, text, model_name))
         if result.ndim == 2:
             result = result.mean(axis=0)
         vectors.append(result.tolist())

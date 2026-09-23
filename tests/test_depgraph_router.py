@@ -1,0 +1,145 @@
+import json
+from pathlib import Path
+from typing import get_args
+
+import numpy as np
+import pytest
+
+from entitygraph_rag.depgraph import dispatch as dispatch_module
+from entitygraph_rag.depgraph import router as router_module
+from entitygraph_rag.depgraph.classify import PATTERNS, build_classification_prompt, build_decision_model
+from entitygraph_rag.depgraph.dispatch import DepGraphContext
+from entitygraph_rag.depgraph.router import FALLBACK_REASONING, classify_query, route_query
+from entitygraph_rag.extraction.schema import load_schema
+from entitygraph_rag.graph import NetworkXGraphStore
+from entitygraph_rag.npm.graph_load import to_entity
+from entitygraph_rag.npm.lookup import NodeLookup
+from entitygraph_rag.retrieval import VectorIndex
+
+SCHEMA = load_schema(Path(__file__).resolve().parent.parent / "schema" / "v2.yaml")
+
+# Two roots. app@1 (lockfile:npm:app@1.0.0): app -> mid@1 -> lib@1.0.0 (GHSA-lib, fixed in 1.0.1).
+# other@2 (lockfile:npm:other@2.0.0): other -> lib@1.0.1 (clean).
+VERSIONS = {"app@1.0.0": ["lockfile:npm:app@1.0.0"], "mid@1.0.0": ["lockfile:npm:app@1.0.0"],
+            "lib@1.0.0": ["lockfile:npm:app@1.0.0"], "other@2.0.0": ["lockfile:npm:other@2.0.0"],
+            "lib@1.0.1": ["lockfile:npm:other@2.0.0"]}
+ROOTS = {"app@1.0.0", "other@2.0.0"}
+
+
+def build_store():
+    nodes = []
+    for v, locks in VERSIONS.items():
+        nodes.append({"node_id": f"npm:{v}", "node_type": "PackageVersion", "name": v, "aliases": [v],
+                      "properties": {"in_tree": True, "is_root": v in ROOTS, "lockfile_doc_ids": locks}})
+    for name in ("app", "mid", "lib", "other"):
+        nodes.append({"node_id": f"npm:{name}", "node_type": "Package", "name": name, "aliases": [name], "properties": {}})
+    nodes.append({"node_id": "GHSA-lib", "node_type": "Vulnerability", "name": "GHSA-lib", "aliases": ["GHSA-lib", "CVE-2020-1"],
+                  "properties": {"aliases": ["CVE-2020-1"], "severity": "HIGH", "summary": "lib leaks",
+                                 "source_url": "https://osv.dev/vulnerability/GHSA-lib"}})
+
+    def edge(s, rel, o, **props):
+        return {"subject_id": s, "relation": rel, "object_id": o, "properties": props, "source_doc_id": "t"}
+
+    edges = [edge(f"npm:{v}", "VERSION_OF", f"npm:{v.split('@')[0]}") for v in VERSIONS]
+    edges += [edge("npm:app@1.0.0", "DEPENDS_ON", "npm:mid@1.0.0", lockfile_doc_ids=["lockfile:npm:app@1.0.0"]),
+              edge("npm:mid@1.0.0", "DEPENDS_ON", "npm:lib@1.0.0", lockfile_doc_ids=["lockfile:npm:app@1.0.0"]),
+              edge("npm:other@2.0.0", "DEPENDS_ON", "npm:lib@1.0.1", lockfile_doc_ids=["lockfile:npm:other@2.0.0"]),
+              edge("npm:lib@1.0.0", "HAS_VULNERABILITY", "GHSA-lib", lockfile_doc_ids=["lockfile:npm:app@1.0.0"]),
+              edge("GHSA-lib", "AFFECTS_VERSION_RANGE", "npm:lib"),
+              edge("GHSA-lib", "FIXED_IN", "npm:lib@1.0.1")]
+    store = NetworkXGraphStore()
+    store.load([to_entity(n) for n in nodes], edges)
+    return store, nodes
+
+
+@pytest.fixture
+def ctx(monkeypatch):
+    store, nodes = build_store()
+    chunks = {"GHSA-lib::0": {"chunk_id": "GHSA-lib::0", "doc_id": "GHSA-lib", "text": "lib leaks headers"},
+              "GHSA-zzz::0": {"chunk_id": "GHSA-zzz::0", "doc_id": "GHSA-zzz", "text": "unrelated"}}
+    index = VectorIndex(["GHSA-lib::0#w0", "GHSA-zzz::0#w0"], np.array([[0.2, 1.0], [1.0, 0.0]]))
+    monkeypatch.setattr(dispatch_module, "embed_query", lambda client, query, variant: [1.0, 0.0])
+    return DepGraphContext(store=store, lookup=NodeLookup(nodes), index=index, chunks_by_id=chunks, embedding_client=None)
+
+
+def classify_as(monkeypatch, **decision):
+    decision = {"entities": [], "pattern": None, "relation": None, "reasoning": "r", **decision}
+    monkeypatch.setattr(router_module, "generate_json", lambda *a, **k: json.dumps(decision))
+
+
+def ask(ctx, query="q"):
+    return route_query(query, client=None, ctx=ctx, schema=SCHEMA)
+
+
+def test_decision_model_vocabulary_comes_from_schema():
+    model = build_decision_model(SCHEMA)
+    assert set(get_args(model.model_fields["pattern"].annotation.__args__[0])) == set(PATTERNS)
+    assert "DEPENDS_ON" in str(model.model_fields["relation"].annotation)
+    prompt = build_classification_prompt(SCHEMA)
+    assert all(p in prompt for p in PATTERNS) and "EXPLOITABLE_WHEN" in prompt
+
+
+def test_classifier_retries_then_falls_back_to_semantic(monkeypatch):
+    calls = []
+    monkeypatch.setattr(router_module, "generate_json", lambda *a, **k: calls.append(1) or '{"route": "bogus"}')
+    decision = classify_query("q", client=None, schema=SCHEMA)
+    assert decision.route == "semantic" and decision.reasoning == FALLBACK_REASONING and len(calls) == 2
+
+
+def test_exposure_of_a_root_to_a_cve(ctx, monkeypatch):
+    classify_as(monkeypatch, route="relational", pattern="exposure", entities=["app@1.0.0", "CVE-2020-1"])
+    result = ask(ctx)
+
+    [row] = result["results"]
+    assert row["path"] == ["npm:app@1.0.0", "npm:mid@1.0.0", "npm:lib@1.0.0"] and row["depth"] == 2
+    assert row["vulnerability_id"] == "GHSA-lib" and row["lockfile_doc_id"] == "lockfile:npm:app@1.0.0"
+    assert result["entities"][1] == {"name": "CVE-2020-1", "node_ids": ["GHSA-lib"]}
+
+
+def test_exposure_of_a_clean_project_is_empty(ctx, monkeypatch):
+    classify_as(monkeypatch, route="relational", pattern="exposure", entities=["other"])  # bare name -> its root
+    assert ask(ctx)["results"] == []
+
+
+def test_affected_projects(ctx, monkeypatch):
+    classify_as(monkeypatch, route="relational", pattern="affected_projects", entities=["CVE-2020-1"])
+    [row] = ask(ctx)["results"]
+    assert row["project"] == "npm:app@1.0.0" and row["version_id"] == "npm:lib@1.0.0"
+
+
+def test_dependency_path_to_any_version_of_a_package(ctx, monkeypatch):
+    classify_as(monkeypatch, route="relational", pattern="dependency_path", entities=["app", "lib"])
+    [row] = ask(ctx)["results"]
+    assert row["path"] == ["npm:app@1.0.0", "npm:mid@1.0.0", "npm:lib@1.0.0"]
+
+
+def test_neighbors_with_relation(ctx, monkeypatch):
+    classify_as(monkeypatch, route="relational", pattern="neighbors", relation="FIXED_IN", entities=["CVE-2020-1"])
+    [row] = ask(ctx)["results"]
+    assert row["node_id"] == "npm:lib@1.0.1" and row["relation"] == "FIXED_IN"
+
+
+def test_hybrid_scopes_search_to_graph_advisories(ctx, monkeypatch):
+    # The query vector points at GHSA-zzz, but lib's only advisory is GHSA-lib.
+    classify_as(monkeypatch, route="graph_guided_hybrid", entities=["lib"])
+    result = ask(ctx)
+    assert [c["chunk_id"] for c in result["chunks"]] == ["GHSA-lib::0"]
+    assert [a["vulnerability_id"] for a in result["advisories"]] == ["GHSA-lib"]
+
+
+def test_hybrid_on_a_project_uses_its_tree(ctx, monkeypatch):
+    classify_as(monkeypatch, route="graph_guided_hybrid", entities=["app@1.0.0"])
+    assert [a["vulnerability_id"] for a in ask(ctx)["advisories"]] == ["GHSA-lib"]
+
+
+def test_semantic_route_is_unscoped(ctx, monkeypatch):
+    classify_as(monkeypatch, route="semantic")
+    result = ask(ctx)
+    assert result["executed_route"] == "semantic" and result["chunks"][0]["chunk_id"] == "GHSA-zzz::0"
+
+
+def test_unknown_entities_fall_back_to_semantic_with_a_warning(ctx, monkeypatch):
+    classify_as(monkeypatch, route="relational", pattern="exposure", entities=["left-pad@9.9.9"])
+    result = ask(ctx)
+    assert result["route"] == "relational" and result["executed_route"] == "semantic"
+    assert any("left-pad" in w for w in result["warnings"]) and result["chunks"]
