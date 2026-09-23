@@ -26,11 +26,18 @@ class InstalledPackage:
     peer_dependencies_meta: dict[str, dict] = field(default_factory=dict)
 
 
-def load_lockfile(path: Path) -> dict:
-    lock = json.loads(path.read_text(encoding="utf-8"))
-    if lock.get("lockfileVersion", 1) < 2 or "packages" not in lock:
-        raise ValueError(f"{path}: lockfileVersion {lock.get('lockfileVersion')} has no `packages` map; need v2 or v3")
+def check_lockfile(lock: object, source: str = "lockfile") -> dict:
+    """Raise ValueError unless `lock` is a package-lock.json with a `packages` map (v2 or v3)."""
+    if not isinstance(lock, dict):
+        raise ValueError(f"{source}: not a package-lock.json object")
+    version = lock.get("lockfileVersion")
+    if not isinstance(version, int) or version < 2 or not isinstance(lock.get("packages"), dict):
+        raise ValueError(f"{source}: lockfileVersion {version} has no `packages` map; need v2 or v3")
     return lock
+
+
+def load_lockfile(path: Path) -> dict:
+    return check_lockfile(json.loads(path.read_text(encoding="utf-8")), str(path))
 
 
 def name_from_path(path: str) -> str:

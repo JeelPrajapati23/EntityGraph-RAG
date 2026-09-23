@@ -30,6 +30,11 @@ For a vulnerable copy name@current in a lockfile:
    given as the fallback, with a flag when it forces a version outside a
    declared range.
 
+For an uploaded lockfile the root is the user's own project, not a registry
+package, so it is never upgraded: a range it declares that blocks every fix
+becomes an `edit_manifest` step (change that range in package.json), or
+`remove_dependency` when no version of the dependency is fixed.
+
 "Safe" means safe against the advisories in this dataset. They were fetched
 for corpus versions, so an advisory affecting only newer versions may be
 missing.
@@ -97,13 +102,11 @@ class _Env:
     store: GraphStore
     releases: Releases
     lockfile_doc_id: str
+    root: str
+    editable_root: bool = False  # the root is a local project whose package.json is edited (an upload)
     # (dependent, dependency name, child candidates, best of them) -> plan. Blockers repeat across branches,
     # e.g. jest's packages pin each other exactly and all lead back to jest-config.
     memo: dict = field(default_factory=dict)
-
-    @property
-    def root(self) -> str:
-        return root_of_lockfile(self.lockfile_doc_id)
 
 
 def top_tier(ranked: list[str], key: Callable[[str], tuple]) -> frozenset:
@@ -166,6 +169,8 @@ def upgrade_dependent(env: _Env, dependent: dict, child_candidates: list[str], c
     memo_key = (parent_id, dep_name, tuple(child_candidates), child_best)
     if memo_key in env.memo:
         return env.memo[memo_key]
+    if env.editable_root and parent_id == env.root:
+        return edit_manifest(dependent, child_candidates)
     name, current = split_version_id(parent_id)
     # spec -> (admits a safe child version, admits a best-ranked one). No spec: the dependency is dropped.
     admits: dict[str | None, tuple[bool, bool]] = {None: (True, True)}
@@ -196,6 +201,16 @@ def upgrade_dependent(env: _Env, dependent: dict, child_candidates: list[str], c
     return env.memo[memo_key]
 
 
+def edit_manifest(dependent: dict, child_candidates: list[str]) -> dict:
+    """The local project's own range blocks every fix: change it to admit the best-ranked fixed version."""
+    step = {"version_id": dependent["dependent"], "dep_name": dependent["dep_name"],
+            "current_range": dependent["range"], "dependency_type": dependent["dependency_type"]}
+    if not child_candidates:
+        return {**step, "status": "remove_dependency"}
+    target = child_candidates[0]
+    return {**step, "status": "edit_manifest", "target_version": target, "suggested_range": f"^{target}"}
+
+
 def is_resolved(plan: dict) -> bool:
     """Whether the plan fixes the copy without an override: in place, or by upgrading every blocking dependent.
 
@@ -203,18 +218,20 @@ def is_resolved(plan: dict) -> bool:
     mutual constraint, e.g. webpack <-> terser-webpack-plugin's peer range) is
     assumed to move with that upgrade; summarize() lists those as unchecked.
     """
-    if plan["status"] in ("in_range", "split", "upgrade_root", "cycle"):
+    if plan["status"] in ("in_range", "split", "upgrade_root", "edit_manifest", "cycle"):
         return True  # a cycle is counted here and listed as unchecked by summarize()
     blocked = [d for d in plan.get("dependents", []) if d["admits"] is None]
     return bool(blocked) and all(is_resolved(d["upgrade"]) for d in blocked)
 
 
 def plan_fix(store: GraphStore, releases: Releases, lockfile_doc_id: str, node_id: str,
-             vulnerability_ids: set[str] | None = None) -> dict:
+             vulnerability_ids: set[str] | None = None, project_root: str | None = None) -> dict:
     """Remediation plan for one vulnerable copy in one lockfile.
 
     vulnerability_ids limits the targets to those advisories; by default
-    every advisory on the copy is a target.
+    every advisory on the copy is a target. project_root is the root node of
+    an uploaded lockfile (a local project, edited rather than upgraded); by
+    default the root is the corpus package the lockfile was resolved for.
     """
     name, current = split_version_id(node_id)
     known = package_advisories(store, name)
@@ -235,7 +252,9 @@ def plan_fix(store: GraphStore, releases: Releases, lockfile_doc_id: str, node_i
     def describe(version: str) -> dict:
         return {"still_affected_by": others[version]} if others[version] else {}
 
-    plan = plan_copy(_Env(store, releases, lockfile_doc_id), node_id, ranked, describe, best=top_tier(ranked, rank))
+    env = _Env(store, releases, lockfile_doc_id, root=project_root or root_of_lockfile(lockfile_doc_id),
+               editable_root=project_root is not None)
+    plan = plan_copy(env, node_id, ranked, describe, best=top_tier(ranked, rank))
     return {"lockfile_doc_id": lockfile_doc_id, "advisories": sorted(targets),
             "lowest_safe_version": safe[0] if safe else None, **plan}
 
@@ -257,6 +276,8 @@ def summarize(plan: dict) -> dict:
     """A blocked / no_fix plan's upgrade tree, flattened and merged across chains.
 
     - root: the project upgrade(s) every chain ends in;
+    - manifest: for an uploaded project, ranges in its own package.json to
+      change, dep name -> {from, to, version};
     - refresh: dependents whose fixed version already fits every range
       declared for them, so a lockfile refresh picks them up;
     - via: intermediate upgrades that come with the ones above, as the
@@ -267,7 +288,7 @@ def summarize(plan: dict) -> dict:
     Each upgrade maps package -> {version, from, whys}. If chains pick
     different versions, the higher is kept.
     """
-    out = {"root": {}, "refresh": {}, "via": {}, "unchecked": [], "unresolved": []}
+    out = {"root": {}, "manifest": {}, "refresh": {}, "via": {}, "unchecked": [], "unresolved": []}
 
     def add(bucket: str, up: dict, why: str) -> None:
         name, version = up["package"], up["target_version"]
@@ -282,6 +303,14 @@ def summarize(plan: dict) -> dict:
             up, who = d["upgrade"], d["dependent"].removeprefix("npm:")
             if up["status"] == "cycle":
                 out["unchecked"].append(f"{who} declares {p['package']} \"{d['range']}\"")
+            elif up["status"] == "edit_manifest":
+                have = out["manifest"].get(up["dep_name"])
+                if have is None or compare(up["target_version"], have["version"]) > 0:
+                    out["manifest"][up["dep_name"]] = {"from": up["current_range"], "to": up["suggested_range"],
+                                                       "version": up["target_version"]}
+            elif up["status"] == "remove_dependency":
+                out["unresolved"].append(f"the project declares {p['package']} \"{d['range']}\" directly, and no "
+                                         f"published version is fixed; remove or replace it")
             elif up["status"] == "too_deep":
                 out["unresolved"].append(f"{who} declares {p['package']} \"{d['range']}\"; the upgrade chain is "
                                          f"longer than {MAX_UPGRADE_DEPTH} steps and was not followed")
@@ -350,6 +379,10 @@ def actions(plan: dict) -> list[str]:
         steps = [f"{name}@{target} is the lowest preferred fixed version, but these dependents' declared ranges "
                  f"exclude every fixed version: {blockers}."]
     s = summarize(plan)
+    if s["manifest"]:
+        steps.append("Edit the project's package.json, then reinstall: "
+                     + _capped([f"{dep} \"{m['from']}\" -> \"{m['to']}\"" for dep, m in sorted(s["manifest"].items())])
+                     + ".")
     if s["root"]:
         lead = "Upgrade the project" if not s["unresolved"] else "Upgrading the project clears only some blockers"
         steps.append(f"{lead}: {_listed(s['root'])}.")

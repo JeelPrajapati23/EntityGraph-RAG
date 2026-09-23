@@ -112,3 +112,37 @@ def test_result_subgraph_orients_neighbor_rows(store):
 def test_result_subgraph_is_empty_for_text_routes(store):
     assert result_subgraph({"executed_route": "semantic", "chunks": []}, store) == {"nodes": [], "edges": []}
     assert result_subgraph({"executed_route": "graph_guided_hybrid", "advisories": []}, store)["edges"] == []
+
+
+@pytest.fixture
+def scan_client():
+    """The same graph plus follow-redirects' OSV range, which upload matching reads."""
+    store = NetworkXGraphStore()
+    store.load([to_entity(n) for n in NODES], EDGES + [
+        {"subject_id": "GHSA-74fj-2j2h-c42q", "relation": "AFFECTS_VERSION_RANGE", "object_id": "npm:follow-redirects",
+         "source_doc_id": "GHSA-74fj-2j2h-c42q", "properties": {"versions": [], "ranges": [
+             {"type": "SEMVER", "events": [{"introduced": "0"}, {"fixed": "1.14.7"}]}]}}])
+    ctx = DepGraphContext(store=store, lookup=NodeLookup(NODES), index=None, chunks_by_id={}, embedding_client=None)
+    with TestClient(create_app(Resources(ctx=ctx, schema=None, client=None))) as test_client:
+        yield test_client
+
+
+def test_scan_reports_exposure_and_subgraph_for_an_uploaded_lockfile(scan_client):
+    lock = {"name": "my-app", "lockfileVersion": 3, "packages": {
+        "": {"name": "my-app", "version": "0.1.0", "dependencies": {"axios": "^0.21.1"}},
+        "node_modules/axios": {"version": "0.21.1", "dependencies": {"follow-redirects": "^1.10.0"}},
+        "node_modules/follow-redirects": {"version": "1.13.1"},
+    }}
+    body = scan_client.post("/scan", json=lock).json()
+
+    assert body["project"]["id"] == "project:my-app@0.1.0" and body["total_results"] == 1
+    assert body["results"][0]["path"] == ["project:my-app@0.1.0", *PATH]
+    assert body["coverage"] == {"versions": 2, "checked": 2, "unchecked": 0, "unchecked_examples": []}
+    assert body["remediation"] is None  # no release metadata in this fixture
+    assert {(e["source"], e["relation"]) for e in body["subgraph"]["edges"]} == {
+        ("project:my-app@0.1.0", "DEPENDS_ON"), (PATH[0], "DEPENDS_ON"), (PATH[1], "HAS_VULNERABILITY")}
+
+
+def test_scan_rejects_a_v1_lockfile(scan_client):
+    resp = scan_client.post("/scan", json={"lockfileVersion": 1, "dependencies": {}})
+    assert resp.status_code == 422 and "v2 or v3" in resp.json()["detail"]

@@ -9,6 +9,7 @@ Endpoints:
     GET  /                 chat + graph-visualization page
     GET  /health           graph / advisory-index sizes
     POST /query            routed, cited answer + the subgraph it traversed
+    POST /scan             exposure + fix plans for an uploaded package-lock.json
     GET  /graph/explore    ego-subgraph around a package, version or advisory
 
 Rebuilding the data is done with the scripts/ build steps, not over HTTP.
@@ -19,14 +20,16 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import groq
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import Body, FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from huggingface_hub.errors import HfHubHTTPError
 from pydantic import BaseModel, Field
 
 from ..depgraph import route_query
+from ..depgraph.scan import run_scan
 from ..depgraph.synthesis import synthesize_answer
 from ..graph import ego_subgraph
+from ..npm.upload import load_upload
 from .resources import Resources, load_resources
 from .views import result_subgraph
 
@@ -79,6 +82,17 @@ def create_app(resources: Resources | None = None, loader: Callable[[], Resource
             "classification_reasoning": result["classification_reasoning"],
             "subgraph": result_subgraph(result, res.ctx.store),
         }
+
+    @app.post("/scan")
+    def scan(request: Request, lock: dict = Body(description="package-lock.json contents (lockfileVersion 2 or 3)")) -> dict:
+        # No LLM or embedding call: graph walks and remediation planning only.
+        ctx = request.app.state.resources.ctx
+        try:
+            upload = load_upload(ctx.store, lock)
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+        result = run_scan(ctx, upload)
+        return {**result, "subgraph": result_subgraph(result, upload.store)}
 
     @app.get("/graph/explore")
     def graph_explore(
