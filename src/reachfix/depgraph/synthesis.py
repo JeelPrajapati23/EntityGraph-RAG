@@ -42,6 +42,9 @@ ADVISORY_ID_RE = re.compile(r"\b(CVE-\d{4}-\d{4,}|GHSA(?:-[0-9a-z]{4}){3}|MAL-\d
 SPACED_VERSION_RE = re.compile(r"(?<=[\w.-]) ?@ ?(?=\d)")
 # "[ G1 ]" / "[ G1, A2 ]" -> "[G1]" / "[G1, A2]": the model sometimes pads citation brackets.
 PADDED_MARKERS_RE = re.compile(r"\[\s+([GA]\d+(?:\s*,\s*[GA]\d+)*)\s*\]|\[([GA]\d+(?:\s*,\s*[GA]\d+)*)\s+\]")
+# "... without an override [Exact totals]." -> "... without an override.": the totals have no
+# marker, but the model sometimes cites them like one.
+TOTALS_CITATION_RE = re.compile(r"\s*\[\s*exact totals\s*\]", re.IGNORECASE)
 MARKER_GROUP_RE = re.compile(r"\[([^\]]+)\]")
 MARKER_RE = re.compile(r"\b([GA]\d+)\b")
 PACKAGE_VERSION_RE = re.compile(r"(?<![\w/@.-])((?:@[\w.-]+/)?[\w.-]+)@(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]*[0-9A-Za-z])?)")
@@ -62,7 +65,7 @@ advisory text [A#]. Do not use outside knowledge.
 the evidence. Never mention an id that is not in the evidence.
 - When a dependency chain answers the question, quote it exactly as given.
 - Use the exact totals as given; don't recount the listed facts, which may \
-be a capped subset.
+be a capped subset. The totals have no marker: cite only [G#] and [A#].
 - If the evidence lists no vulnerability for something, say none is known in \
 this dataset, not that it is safe.
 - When a graph fact gives a remediation plan, give its steps with exactly \
@@ -284,6 +287,7 @@ def synthesize_answer(result: dict, *, client: Groq, model_name: str = DEFAULT_M
     answer = generate_text(client, system_prompt=SYSTEM_PROMPT, user_prompt=prompt, model_name=model_name)
     answer = SPACED_VERSION_RE.sub("@", answer.translate(ANSWER_NORMALIZATION))
     answer = PADDED_MARKERS_RE.sub(lambda m: f"[{m[1] or m[2]}]", answer)
+    answer = TOTALS_CITATION_RE.sub("", answer)
     return {
         "query": result["query"],
         "route": result["route"],

@@ -143,6 +143,13 @@ def test_synthesize_joins_versions_spaced_with_narrow_no_break_spaces(monkeypatc
 
 def test_synthesize_strips_padding_inside_citation_brackets(monkeypatch):
     monkeypatch.setattr(synthesis_module, "generate_text",
-                        lambda *a, **k: "Yes [ G1 ]. Upgrade [ G1, A2 ]; see [G1 ] and [ exact totals ].")
+                        lambda *a, **k: "Yes [ G1 ]. Upgrade [ G1, A2 ]; see [G1 ] and [ other text ].")
     out = synthesize_answer(remediation_result(), client=None)
-    assert out["answer"] == "Yes [G1]. Upgrade [G1, A2]; see [G1] and [ exact totals ]."
+    assert out["answer"] == "Yes [G1]. Upgrade [G1, A2]; see [G1] and [ other text ]."
+
+
+def test_synthesize_drops_citations_of_the_totals(monkeypatch):
+    monkeypatch.setattr(synthesis_module, "generate_text",
+                        lambda *a, **k: "1 copy, fixable without an override [Exact totals]. Upgrade [G1] [ exact totals ].")
+    out = synthesize_answer(remediation_result(), client=None)
+    assert out["answer"] == "1 copy, fixable without an override. Upgrade [G1]."
