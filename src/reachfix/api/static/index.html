@@ -794,6 +794,8 @@ function planCard(p) {
   const target = p.target_version ? ` → <code style="color:var(--fix)">${esc(pkg)}@${esc(p.target_version)}</code>` : "";
   const sevs = {};
   for (const a of p.advisories) sevs[a.severity ?? "UNLABELED"] = (sevs[a.severity ?? "UNLABELED"] ?? 0) + 1;
+  // actions() ends with its own "Fallback: `overrides`…" step; the override is drawn once, below, as a copyable block.
+  const steps = p.override?.version ? p.actions.filter(a => !a.startsWith("Fallback")) : p.actions;
   const override = p.override?.version
     ? `<li class="fallback"><div style="flex:1; min-width:0">Fallback if the dependents can't move: an npm override${
         p.override.outside_ranges?.length ? `, outside the range ${esc(p.override.outside_ranges.map(shortId).join(", "))} declares` : ""}.
@@ -808,7 +810,7 @@ function planCard(p) {
     </div>
     <div style="font-size:14px"><code>${esc(shortId(p.version_id))}</code>${target}
       <span style="margin-left:6px">${Object.entries(sevs).map(([s, n]) => sevChip(s, n)).join(" ")}</span></div>
-    <ol class="steps">${p.actions.map(a => `<li><div style="flex:1; min-width:0">${stepHtml(a)}</div></li>`).join("")}${override}</ol>
+    <ol class="steps">${steps.map(a => `<li><div style="flex:1; min-width:0">${stepHtml(a)}</div></li>`).join("")}${override}</ol>
   </article>`;
 }
 
