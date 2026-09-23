@@ -1,13 +1,22 @@
 # EntityGraph-RAG
 
-A hybrid retrieval engine that combines vector search with graph traversal for
-multi-hop question answering over document collections.
+A hybrid retrieval engine combining a dependency/vulnerability knowledge graph
+with semantic search over advisory text. It answers multi-hop supply-chain
+exposure questions that plain similarity search can't reach, such as "is
+react-scripts@4.0.3 exposed to CVE-2022-0155, and through which chain of
+transitive dependencies?"
 
-Demonstrated here on public SEC filings and earnings call transcripts, but the
-extraction schema and retrieval router are domain-agnostic — see
-[`docs/adapting-to-a-new-domain.md`](docs/adapting-to-a-new-domain.md) (coming
-soon) for notes on retargeting the pipeline to a different corpus (e.g. legal
-contracts, supply-chain docs, research papers).
+The graph is mostly deterministic: dependency edges come from npm lockfiles,
+and vulnerability ranges come from OSV.dev's structured data. The LLM
+handles one narrow, checkable job: extracting exploitability conditions from
+advisory free text. See [`docs/dataset.md`](docs/dataset.md) and
+[`schema/v2.yaml`](schema/v2.yaml).
+
+> **Retargeting in progress.** This engine was first built and run end to
+> end on SEC filings (schema v1). It is now being retargeted to npm
+> dependency graphs (schema v2). The graph store, retrieval, router,
+> synthesis, evaluation and API layers carry over. Acquisition, ingestion,
+> extraction and resolution are being rewritten.
 
 This project shares ingestion and evaluation philosophy with a sibling
 legal-RAG project (ClauseIQ) — same discipline around chunking, provenance,
@@ -16,7 +25,8 @@ retrieval instead of pure vector search).
 
 ## Status
 
-Active development — the full pipeline from raw documents through a cited,
+DepGraph Phase 0 (schema v2 and corpus scope) is done. For the finance
+version, the full pipeline from raw documents through a cited,
 natural-language answer is in place: dataset, schema, data acquisition,
 ingestion/chunking, entity/relation extraction, entity resolution, graph
 construction (NetworkX, behind a swappable GraphStore interface), semantic

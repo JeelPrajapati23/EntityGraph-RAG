@@ -1,0 +1,170 @@
+# DepGraph entity/relation schema — v2
+#
+# Retargets the pipeline from SEC filings (v1) to npm dependency and
+# vulnerability exposure. v1.yaml is left untouched — a new domain is a new
+# schema version, not an in-place edit.
+#
+# Unlike v1, most edges here are NOT LLM-extracted. Each edge type declares
+# an `extraction` method:
+#   - deterministic: parsed from lockfiles / registry metadata / OSV's
+#     structured fields. Ground truth — no hallucination risk, confidence 1.0.
+#   - derived: computed at graph-build time from other edges (e.g. semver
+#     range matching), never read directly from a source.
+#   - llm: extracted from advisory free text. Only these relations go into
+#     the LLM extraction prompt and the generated Triple model.
+#
+# Package identity is two-level (like deps.dev / GUAC): a name-level
+# `Package` and a concrete `PackageVersion`. Dependency trees and
+# vulnerability exposure are facts about versions; maintainers and advisory
+# ranges are facts about the package name.
+
+version: 2
+domain: npm dependency & vulnerability graph
+ecosystem: npm   # MVP scope; cross-ecosystem support is a future improvement
+
+node_types:
+  Package:
+    description: >
+      A package name within an ecosystem, independent of version
+      (e.g. "follow-redirects"). Canonical id: "<ecosystem>:<name>",
+      e.g. "npm:@babel/core". Names are already unique per ecosystem, so no
+      fuzzy entity resolution is needed.
+    properties:
+      - name
+      - ecosystem
+
+  PackageVersion:
+    description: >
+      One concrete published version of a Package (e.g. follow-redirects
+      1.13.1). Canonical id: "<ecosystem>:<name>@<version>". The unit that
+      dependency trees are made of and that vulnerabilities apply to.
+    properties:
+      - name
+      - ecosystem
+      - version
+      - published_at     # from the registry's `time` map
+      - deprecated       # registry deprecation message, if any
+      - is_root          # true for the corpus roots in config/projects.yaml
+      - in_tree          # false for versions only referenced as a FIXED_IN target
+
+  Vulnerability:
+    description: >
+      A security advisory from OSV.dev. Canonical id is the OSV id (GHSA-…
+      for npm); CVE ids are aliases, so a query naming a CVE must be
+      resolved through `aliases`.
+    properties:
+      - osv_id
+      - aliases          # e.g. [CVE-2022-0155]
+      - summary
+      - severity         # GHSA label: LOW / MODERATE / HIGH / CRITICAL
+      - cvss_vector      # optional, from OSV `severity`
+      - published_at
+      - modified_at
+      - withdrawn_at     # optional; withdrawn advisories are kept but excluded from exposure
+
+  Maintainer:
+    description: >
+      An npm account listed as a package maintainer. Stored by npm username
+      only — maintainer emails from registry metadata are deliberately
+      dropped.
+    properties:
+      - username
+
+  License:
+    description: A license identifier, SPDX where the registry provides one (e.g. "MIT").
+    properties:
+      - spdx_id
+
+  ExploitCondition:
+    description: >
+      A precondition, stated only in an advisory's free text, that must hold
+      for the vulnerability to be exploitable (e.g. "parsing untrusted YAML",
+      "`maxRedirects` set above default"). The only node type produced by
+      LLM extraction.
+    properties:
+      - text
+      - category         # one of: input_source, configuration, api_usage, platform, other
+
+edge_types:
+  VERSION_OF:
+    subject: PackageVersion
+    object: Package
+    extraction: deterministic
+    description: Subject is a published version of object package.
+
+  DEPENDS_ON:
+    subject: PackageVersion
+    object: PackageVersion
+    extraction: deterministic
+    properties:
+      - version_range    # declared range, e.g. "^1.10.0" — needed for remediation (Phase 9)
+      - dependency_type  # prod / optional / peer
+    description: >
+      Subject version declares a dependency that resolved to object version
+      in the lockfile. The edge carries the declared range, not just the
+      resolved version, so it can be checked later whether a fix satisfies
+      every dependent's constraint.
+
+  AFFECTS_VERSION_RANGE:
+    subject: Vulnerability
+    object: Package
+    extraction: deterministic
+    properties:
+      - ranges           # OSV `affected[].ranges` events (introduced / fixed / last_affected), verbatim
+    description: >
+      Subject advisory affects the object package within the given version
+      ranges, taken from OSV's structured `affected` field.
+
+  HAS_VULNERABILITY:
+    subject: PackageVersion
+    object: Vulnerability
+    extraction: derived
+    description: >
+      Subject version falls inside one of the object advisory's
+      AFFECTS_VERSION_RANGE ranges. Computed by semver matching at graph
+      build time, never extracted directly.
+
+  FIXED_IN:
+    subject: Vulnerability
+    object: PackageVersion
+    extraction: deterministic
+    description: >
+      The earliest version (per range) in which the subject advisory is
+      fixed, from OSV `fixed` range events. The target may not appear in any
+      corpus tree; that node is created with in_tree = false.
+
+  MAINTAINED_BY:
+    subject: Package
+    object: Maintainer
+    extraction: deterministic
+    description: Object account is a current maintainer of subject package, per registry metadata.
+
+  LICENSED_UNDER:
+    subject: PackageVersion
+    object: License
+    extraction: deterministic
+    description: >
+      Subject version declares object license. Per-version, not per-package,
+      because packages can change license between versions.
+
+  EXPLOITABLE_WHEN:
+    subject: Vulnerability
+    object: ExploitCondition
+    extraction: llm
+    description: >
+      Subject advisory's text states object condition must hold for it to be
+      exploitable. Extracted from advisory `details` text because OSV's
+      structured fields don't capture it.
+
+# Properties every edge instance carries. source_chunk_id is set only for
+# llm edges (they trace back to an advisory-text chunk); deterministic and
+# derived edges trace back to a manifest record via source_doc_id/source_url.
+# The same fact from several sources (e.g. a lockfile and a registry
+# cross-check) is one edge carrying all of its sources.
+edge_properties:
+  - extraction_method   # deterministic / derived / llm
+  - source_doc_id
+  - source_url
+  - source_chunk_id
+  - confidence          # 1.0 for deterministic / derived
+  - extracted_at

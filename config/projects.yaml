@@ -1,0 +1,91 @@
+# Corpus roots for DepGraph: 20 real, pinned npm packages whose full
+# transitive dependency trees make up the graph.
+#
+# Why pinned older versions: vulnerabilities are disclosed after release.
+# A tree resolved as it would have been installed back then contains real
+# vulnerable transitive dependencies that were fixed later, which gives the
+# multi-hop exposure demo something to find. See docs/dataset.md.
+#
+# Each tree is resolved with
+#   npm install <name>@<version> --package-lock-only --before=<resolve_before>
+#       --ignore-scripts --legacy-peer-deps
+# so every range resolves to the newest version published before
+# `resolve_before` (the day after the root's own release). Resolution is
+# reproducible and needs no hand-written resolver. --legacy-peer-deps
+# matches the npm 6-era peer-dependency behavior these roots shipped with.
+#
+# The mix is deliberate: a few huge trees (react-scripts, @vue/cli-service,
+# @angular/cli, next) for depth, mid-size trees for breadth, and a few
+# small ones (axios, jsonwebtoken) where a vulnerable path is easy to verify
+# by hand.
+
+ecosystem: npm
+
+projects:
+  # --- Build tooling / app frameworks (large, deep trees) -----------------
+  - name: react-scripts
+    version: 4.0.3
+    resolve_before: 2021-02-23
+  - name: "@vue/cli-service"
+    version: 4.5.13
+    resolve_before: 2021-05-09
+  - name: "@angular/cli"
+    version: 11.2.0
+    resolve_before: 2021-02-12
+  - name: next
+    version: 10.0.0
+    resolve_before: 2020-10-28
+  - name: webpack
+    version: 4.46.0
+    resolve_before: 2021-01-12
+  - name: gulp
+    version: 4.0.2
+    resolve_before: 2019-05-07
+  - name: browser-sync
+    version: 2.26.14
+    resolve_before: 2021-01-25
+  - name: node-sass
+    version: 4.14.1
+    resolve_before: 2020-05-05
+
+  # --- Test runners / linters ---------------------------------------------
+  - name: jest
+    version: 26.6.3
+    resolve_before: 2020-11-05
+  - name: mocha
+    version: 8.4.0
+    resolve_before: 2021-05-08
+  - name: karma
+    version: 5.2.3
+    resolve_before: 2020-09-26
+  - name: eslint
+    version: 7.32.0
+    resolve_before: 2021-07-31
+
+  # --- Server / runtime libraries -----------------------------------------
+  - name: express
+    version: 4.17.1
+    resolve_before: 2019-05-27
+  - name: socket.io
+    version: 2.4.1
+    resolve_before: 2021-01-08
+  - name: mongoose
+    version: 5.12.0
+    resolve_before: 2021-03-12
+  - name: puppeteer
+    version: 5.5.0
+    resolve_before: 2020-11-17
+  - name: nodemon
+    version: 2.0.7
+    resolve_before: 2021-01-07
+
+  # --- Small trees (easy to hand-verify) ----------------------------------
+  - name: axios
+    version: 0.21.1
+    resolve_before: 2020-12-23
+  - name: request
+    version: 2.88.2
+    resolve_before: 2020-02-12
+  - name: jsonwebtoken
+    version: 8.5.1
+    resolve_before: 2019-03-19

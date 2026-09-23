@@ -1,65 +1,73 @@
 # Dataset notes
 
-## Company universe
+> The project was retargeted from SEC filings (schema v1, `config/companies.yaml`)
+> to npm dependency/vulnerability exposure (schema v2, `config/projects.yaml`).
+> The finance-era notes are in git history.
 
-20 companies across two linked groups — see [`config/companies.yaml`](../config/companies.yaml):
+## Scope
 
-- **Semiconductor suppliers/fabs (10):** NVIDIA, TSMC, Intel, AMD, Qualcomm,
-  Texas Instruments, Broadcom, Micron, ASML, STMicroelectronics
-- **Automotive/consumer-electronics customers (10):** Apple, Tesla, Ford,
-  General Motors, Alphabet, Sony, Dell, HP, Cisco, Amazon
+- **Ecosystem:** npm only for the MVP. npm trees are denser and deeper than
+  PyPI's, which suits a multi-hop demo. Cross-ecosystem support (and aliasing
+  the same library across ecosystems) is a stated future improvement, not
+  an MVP requirement.
+- **Corpus:** 20 pinned root packages. See
+  [`config/projects.yaml`](../config/projects.yaml). The mix covers large
+  build tooling (react-scripts, @vue/cli-service, @angular/cli, next),
+  mid-size test runners and servers, and a few small trees (axios,
+  jsonwebtoken) where a vulnerable path can be checked by hand.
 
-Chosen as a single sector pairing (not 20 unrelated companies) because real
-`SUPPLIES` / `COMPETES_WITH` / `EXECUTIVE_OF` edges already exist between
-them — e.g. TSMC fabricates chips for NVIDIA, AMD, and Apple; Qualcomm
-supplies modems to Apple; NVIDIA and Intel/AMD/Qualcomm compete directly.
-That density is what makes multi-hop questions ("who fabricates chips for
-both NVIDIA and Apple?") answerable and gives the eventual golden-set
-questions something non-trivial to traverse.
+## Why pinned, date-bounded trees
 
-## Filing types & a schema nuance
+A tree resolved today pulls the latest patched version of every transitive
+dependency, so most historical vulnerabilities disappear from it. Each root
+is instead resolved with `npm install --package-lock-only --before=<date>`,
+using the day after the root's own release. This gives the tree a real
+project would have installed then. The resolution is reproducible and
+needs no custom resolver.
 
-The default filing set is 10-K / 10-Q / 8-K. Three companies here are
-**foreign private issuers** (TSMC, ASML, STMicroelectronics) plus one more
-(Sony) — they file **20-F** (annual, in place of 10-K) and **6-K** (in place
-of 8-K/10-Q) instead. Tracked via the `filer_type` field in
-`config/companies.yaml` so the EDGAR downloader can branch on it per company
-rather than assuming one filing-type set for all 20.
+Spot checks done while choosing the corpus (2026-09-23):
 
-## Data acquisition
+| Root | Resolved transitive dep | Known advisory |
+|---|---|---|
+| `axios@0.21.1` | `follow-redirects@1.13.1` | CVE-2022-0155 (fixed 1.14.7) |
+| `express@4.17.1` | `qs@6.7.0` | CVE-2022-24999 (fixed 6.7.3) |
+| `express@4.17.1` | `path-to-regexp@0.1.7` | CVE-2024-45296 (fixed 0.1.10) |
 
-Two scripts pull the raw corpus into `data/raw/` (gitignored — acquired
-data, not source):
+`react-scripts@4.0.3` resolves to ~1,900 packages in ~70 s.
 
-- **`scripts/fetch_edgar_filings.py`** — resolves CIKs from EDGAR's
-  `company_tickers.json`, then pulls each company's most recent filings via
-  `data.sec.gov/submissions/`, branching on `filer_type` per company. Sends
-  a descriptive `User-Agent` with a contact email, per SEC's fair-access
-  policy, and rate-limits itself well under SEC's 10 req/sec cap.
-- **`scripts/fetch_transcripts.py`** — pulls earnings-call transcripts from
-  **`Bose345/sp500_earnings_transcripts`** on Hugging Face (MIT licensed,
-  "research and educational use," speaker-segmented, 2005-2025). Queries
-  the dataset-viewer's `/filter` API server-side (rather than downloading
-  the ~1GB parquet file) so only matching rows cross the wire.
+## Gotcha for Phase 1/2: lockfile nesting is not dependency depth
 
-Both write a `manifest.jsonl` alongside the downloaded files — `doc_id`,
-`ticker`/`cik`, `filing_date`/date, `source_url`/`source`, `local_path` —
-which is what the ingestion pipeline will read to build chunk provenance.
+npm hoists packages, so in `package-lock.json` the `node_modules/…`
+nesting is at most 2–3 levels even for deep trees. Logical `DEPENDS_ON`
+edges have to be rebuilt from each entry's own `dependencies` map, using
+Node's resolution rule: look in the nearest `node_modules` first, then walk
+up. The path segments alone don't give the edges.
 
-**Coverage gap:** the transcript dataset only covers S&P 500 constituents,
-so TSM/ASML/STM (foreign private issuers, not S&P 500 members) have no
-transcripts — filings-only for those three.
+## Data sources
 
-**Caveat worth naming:** transcript text carries each company's own
-copyright/reproduction notice (e.g. "The content of today's call is
-NVIDIA's property..."). The dataset's MIT license covers the uploader's
-compilation, not necessarily the underlying call content. Fine for
-research/educational, non-redistributed use here — flagged so it's a
-documented, deliberate choice rather than an oversight.
+| Data | Source | Notes |
+|---|---|---|
+| Dependency trees | `npm install --package-lock-only --before` | Deterministic. Produces `DEPENDS_ON` edges and declared ranges |
+| Vulnerabilities | [OSV.dev](https://osv.dev) `/v1/querybatch` + `/v1/vulns/{id}` | Structured ranges plus free-text `details` for LLM extraction |
+| Maintainers, license, publish time, deprecation | `registry.npmjs.org/<pkg>` | Maintainer emails are dropped and only usernames are kept |
+
+Every fetched record goes into a `manifest.jsonl` with package, ecosystem,
+version, source URL and fetch time, the same provenance discipline the
+finance version used.
 
 ## Schema
 
-See [`schema/v1.yaml`](../schema/v1.yaml) for the fixed node/edge type
-vocabulary. Kept separate from company selection: swapping in a different
-company universe (or a different domain's schema entirely — see the
-project README) shouldn't require touching this file.
+See [`schema/v2.yaml`](../schema/v2.yaml). Key decisions:
+
+- **Two-level package identity** (`Package` name vs. `PackageVersion`),
+  like deps.dev and GUAC. Trees and exposure are about versions.
+  Maintainers and advisory ranges are about names.
+- **Each edge type declares its extraction method.** Only
+  `EXPLOITABLE_WHEN` (advisory text → `ExploitCondition`) is LLM-extracted.
+  `HAS_VULNERABILITY` is *derived* by semver-matching tree versions
+  against OSV ranges. Everything else is deterministic ground truth.
+- **`DEPENDS_ON` keeps the declared range**, not only the resolved
+  version. Phase 9 remediation needs it to check whether a fixed version
+  satisfies every dependent's constraint.
+- **CVE ids are aliases.** npm advisories are keyed by GHSA id, so a query
+  naming a CVE resolves through `Vulnerability.aliases`.
