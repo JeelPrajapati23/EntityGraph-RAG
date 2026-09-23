@@ -1,14 +1,14 @@
 {
   "summary": {
-    "questions": 20,
-    "route_accuracy": 0.95,
-    "pattern_accuracy": 0.9,
-    "checks_passed": 19,
-    "fully_correct": 17,
+    "questions": 24,
+    "route_accuracy": 1.0,
+    "pattern_accuracy": 1.0,
+    "checks_passed": 23,
+    "fully_correct": 23,
     "variant": "minilm_windowed",
-    "answers_grounded": 20,
-    "answers_citing": 20,
-    "answers_with_all_expected_mentions": 18
+    "answers_grounded": 23,
+    "answers_citing": 24,
+    "answers_with_all_expected_mentions": 23
   },
   "questions": [
     {
@@ -39,15 +39,14 @@
       "checks_ok": true,
       "failures": [],
       "reasoning": "The question asks whether a specific package version falls within the vulnerable range of a named advisory, which is an exposure query.",
-      "answer": "**Yes \u2013\u202faxios\u202f0.21.1 is exposed to CVE-2022-0155.**  \n\n- The exact totals for axios\u202f0.21.1 list\u202f1 advisory on\u202f1 vulnerable version (high severity) and a deepest hop of\u202f1\u202f[hops][Exact totals].  \n- The dependency graph shows axios\u202f0.21.1 depends on **follow-redirects\u202f1.13.1**, which is marked **VULNERABLE: GHSA-74fj-2j2h-c42q / CVE-2022-0155, HIGH**[G1].  \n\nThus the vulnerability is reachable within one hop from axios\u202f0.21.1.",
+      "answer": "**Yes \u2013 axios 0.21.1 is exposed to CVE-2022-0155.**  \n\n- The package depends on **follow-redirects 1.13.1**, which is flagged as vulnerable for **CVE-2022-0155** (GHSA-74fj-2j2h-c42q, HIGH) [G1].  \n- The exact totals confirm one high-severity advisory affecting this version [Exact totals].  \n\n**Remediation:** upgrade the vulnerable dependency to **follow-redirects \u2265 1.14.7** as the fixed version is specified in the graph fact [G1].",
       "answer_checks": {
         "grounded": true,
         "cites": true,
-        "missing_mentions": [
-          "follow-redirects@1.13.1"
-        ],
+        "missing_mentions": [],
         "ungrounded_ids": [],
-        "unknown_markers": []
+        "unknown_markers": [],
+        "ungrounded_versions": []
       }
     },
     {
@@ -78,14 +77,15 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The question asks if the specific package version is exposed to a particular advisory, which is a graph\u2011based exposure query.",
-      "answer": "**Yes** \u2013\u202fexpress\u202f4.17.1 depends on a package that is vulnerable to **CVE-2024-45296**.\n\n**Supporting details**\n\n- express\u202f4.17.1 \u2192 depends_on \u2192 **path-to-regexp@0.1.7** which is marked **VULNERABLE: \u2026 CVE-2024-45296 \u2026 HIGH**[G1].  \n- The same vulnerable version appears in a second advisory entry for the same CVE[G2].  \n\n**Summary**\n\n- Total for express\u202f4.17.1: **2 advisories** on **1 vulnerable version** (both **high** severity)[Exact totals].",
+      "reasoning": "The question asks if a specific package version is exposed to a particular CVE, which is a classic exposure relational query.",
+      "answer": "**Yes** \u2013 express 4.17.1 pulls in a vulnerable dependency.\n\n**Why:**  \n- express 4.17.1 depends on `path-to-regexp@0.1.7`, which is listed as vulnerable to **CVE-2024-45296** (high severity) in two advisories [G1][G2].\n\n**Evidence:**  \n- The exact totals for express 4.17.1 show 2 high-severity advisories on 1 vulnerable version, with the deepest vulnerable hop at 1 [exact totals].  \n- Both graph facts identify `path-to-regexp@0.1.7` as affected by CVE-2024-45296 [G1][G2].\n\n**Remediation (as given):**  \n- Fixed in `path-to-regexp@0.1.13` (from [G1]) or in `path-to-regexp@0.1.10`, `1.9.0`, `3.3.0`, `6.3.0`, `8.0.0` (from [G2]).",
       "answer_checks": {
         "grounded": true,
         "cites": true,
         "missing_mentions": [],
         "ungrounded_ids": [],
-        "unknown_markers": []
+        "unknown_markers": [],
+        "ungrounded_versions": []
       }
     },
     {
@@ -109,16 +109,15 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The query asks for vulnerabilities affecting any package in the dependency tree of a specific version, which is a relational exposure question.",
-      "answer": "**Vulnerabilities in the jsonwebtoken\u202f@8.5.1 dependency tree**\n\n| Package | Advisory ID / CVE | Severity | Issue |\n|---------|-------------------|----------|-------|\n| jsonwebtoken\u202f@8.5.1 | GHSA-8cf7-32gw-wr33 / CVE-2022-23539 | HIGH | unrestricted key type could lead to legacy keys usage |\n| jsonwebtoken\u202f@8.5.1 | GHSA-hjrf-2m68-5959 / CVE-2022-23541 | MODERATE | insecure key-retrieval implementation allowing forgeable tokens |\n| jsonwebtoken\u202f@8.5.1 | GHSA-qwph-4952-7xr6 / CVE-2022-23540 | MODERATE | signature-validation bypass due to insecure default algorithm |\n| jws\u202f@3.2.2 (dependency) | GHSA-869p-cjfg-cm3x / CVE-2025-65945 | HIGH | improperly verifies HMAC signature |\n| semver\u202f@5.6.0 (dependency) | GHSA-c2qf-rxjj-qqgw / CVE-2022-25883 | HIGH | regular-expression denial-of-service |\n\n**Summary**\n\n- Total advisories: **5** on **3** vulnerable versions (3\u202fhigh, 2\u202fmoderate)\u202f\u2014 deepest at 1 hop\u202f\u2014 as stated in the exact totals.  \n- No additional advisories are listed in the provided evidence.  \n\n**Sources**: [G1], [G2], [G3], [G4], [G5].",
+      "reasoning": "The query asks for vulnerabilities present in the dependency tree of a specific package version, which is a graph\u2011based exposure question.",
+      "answer": "**Vulnerabilities in the jsonwebtoken@8.5.1 dependency tree (5 advisories, 3 high, 2 moderate):**\n\n| Package | Advisory ID / CVE | Severity | Issue | Fixed version(s) |\n|---------|-------------------|----------|-------|------------------|\n| jsonwebtoken@8.5.1 | GHSA-8cf7-32gw-wr33 / CVE-2022-23539 | HIGH | Unrestricted key type could lead to legacy keys usage | jsonwebtoken@9.0.0 |\n| jws@3.2.2 (dependency) | GHSA-869p-cjfg-cm3x / CVE-2025-65945 | HIGH | Improperly verifies HMAC signature | jws@3.2.3, jws@4.0.1 |\n| semver@5.6.0 (dependency) | GHSA-c2qf-rxjj-qqgw / CVE-2022-25883 | HIGH | Regular expression denial-of-service | semver@5.7.2, semver@6.3.1, semver@7.5.2 |\n| jsonwebtoken@8.5.1 | GHSA-hjrf-2m68-5959 / CVE-2022-23541 | MODERATE | Insecure key-retrieval implementation could allow forgeable tokens | jsonwebtoken@9.0.0 |\n| jsonwebtoken@8.5.1 | GHSA-qwph-4952-7xr6 / CVE-2022-23540 | MODERATE | Signature-validation bypass due to insecure default algorithm | jsonwebtoken@9.0.0 |\n\n**Supporting details**\n\n- jsonwebtoken@8.5.1 itself is vulnerable to GHSA-8cf7-32gw-wr33 / CVE-2022-23539 (high) and GHSA-hjrf-2m68-5959 / CVE-2022-23541 (moderate) and GHSA-qwph-4952-7xr6 / CVE-2022-23540 (moderate) [G1][G4][G5].  \n- Its direct dependency jws@3.2.2 is vulnerable to GHSA-869p-cjfg-cm3x / CVE-2025-65945 (high) [G2].  \n- Its direct dependency semver@5.6.0 is vulnerable to GHSA-c2qf-rxjj-qqgw / CVE-2022-25883 (high) [G3].\n\nNo other packages appear in the tree (depth = 1 hop). The dataset lists a total of 5 advisories on 3 vulnerable versions, matching the above list.",
       "answer_checks": {
         "grounded": true,
         "cites": true,
-        "missing_mentions": [
-          "jws@3.2.2"
-        ],
+        "missing_mentions": [],
         "ungrounded_ids": [],
-        "unknown_markers": []
+        "unknown_markers": [],
+        "ungrounded_versions": []
       }
     },
     {
@@ -142,14 +141,15 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The question asks whether a specific package version is exposed to vulnerabilities via its dependency tree, which is a crisp graph exposure query.",
-      "answer": "**Yes \u2013 mocha\u202f8.4.0 pulls in a number of vulnerable transitive packages.**  \n\n**Key high-severity paths (10 most severe)**  \n\n1. `mocha@8.4.0 \u2192 depends_on \u2192 minimatch@3.0.4` \u2013 **GHSA-23c5-xmqv-rm74 / CVE-2026-27904** (ReDoS)[G1]  \n2. `mocha@8.4.0 \u2192 depends_on \u2192 minimatch@3.0.4` \u2013 **GHSA-3ppc-4f35-3m26 / CVE-2026-26996** (ReDoS)[G5]  \n3. `mocha@8.4.0 \u2192 depends_on \u2192 minimatch@3.0.4` \u2013 **GHSA-7r86-cg39-jmmj / CVE-2026-27903** (ReDoS)[G9]  \n4. `mocha@8.4.0 \u2192 depends_on \u2192 minimatch@3.0.4` \u2013 **GHSA-f8q6-p94x-37v3 / CVE-2022-3517** (ReDoS)[G10]  \n5. `mocha@8.4.0 \u2192 depends_on \u2192 minimatch@3.0.4 \u2192 depends_on \u2192 brace-expansion@1.1.11` \u2013 **GHSA-3jxr-9vmj-r5cp / CVE-2026-13149** (DoS)[G12]  \n6. `mocha@8.4.0 \u2192 depends_on \u2192 chokidar@3.5.1 \u2192 depends_on \u2192 braces@3.0.2` \u2013 **GHSA-grv7-fg5c-xmjg / CVE-2024-4068** (resource consumption)[G13]  \n7. `mocha@8.4.0 \u2192 depends_on \u2192 minimatch@3.0.4 \u2192 depends_on \u2192 brace-expansion@1.1.11` \u2013 **GHSA-mh99-v99m-4gvg / CVE-2026-14257** (OOM)[G14]  \n8. `mocha@8.4.0 \u2192 depends_on \u2192 minimatch@3.0.4 \u2192 depends_on \u2192 brace-expansion@1.1.11` \u2013 **GHSA-rgw5-rvv9-x895 / CVE-2026-69152** (DoS)[G15]  \n9. `mocha@8.4.0 \u2192 depends_on \u2192 chokidar@3.5.1 \u2192 depends_on \u2192 readdirp@3.5.0 \u2192 depends_on \u2192 picomatch@2.2.3` \u2013 **GHSA-c2c7-rcm5-vvqj / CVE-2026-33671** (ReDoS)[G16]  \n10. `mocha@8.4.0 \u2192 depends_on \u2192 wide-align@1.1.3 \u2192 \u2026 \u2192 ansi-regex@3.0.0` \u2013 **GHSA-93q8-gq69-wqmw / CVE-2021-3807** (regex-complexity)[G17]\n\n**Other notable high-severity entries** (not listed due to the 10-item limit) include additional `minimatch` and `brace-expansion` issues (G2, G3, G4, G6, G7, G8, G11, G16-G18, etc.).\n\n**Overall exposure**  \n\n- **26 advisories** affect mocha\u202f8.4.0\u2019s dependency tree.  \n- **10 vulnerable versions** are referenced.  \n- **Severity breakdown:** 17\u202fhigh, 7\u202fmoderate, 2\u202flow.  \n- The deepest vulnerable chain is **4 hops** deep.  \n\nThus, your project using mocha\u202f8.4.0 is indeed vulnerable through multiple transitive dependencies.",
+      "reasoning": "The question asks if a specific package version (mocha@8.4.0) is exposed to any vulnerabilities through its dependency tree, which is a crisp graph\u2011based exposure query.",
+      "answer": "**Yes \u2013 mocha 8.4.0 pulls in a large number of vulnerable transitive dependencies.**  \n\n**Key high-severity paths (first 10):**  \n\n1. `mocha@8.4.0 \u2192 depends_on \u2192 minimatch@3.0.4` \u2013 **GHSA-23c5-xmqv-rm74 / CVE-2026-27904** (HIGH)[G1]  \n2. `mocha@8.4.0 \u2192 depends_on \u2192 js-yaml@4.0.0` \u2013 **GHSA-2883-xcg3-v3hh / CVE-2026-84375** (HIGH)[G2]  \n3. `mocha@8.4.0 \u2192 depends_on \u2192 nanoid@3.1.20` \u2013 **GHSA-28wg-ghj8-5hjv / CVE-2026-67214** (HIGH)[G3]  \n4. `mocha@8.4.0 \u2192 depends_on \u2192 nanoid@3.1.20` \u2013 **GHSA-2v37-7h3g-55p8 / CVE-2026-67213** (HIGH)[G4]  \n5. `mocha@8.4.0 \u2192 depends_on \u2192 minimatch@3.0.4` \u2013 **GHSA-3ppc-4f35-3m26 / CVE-2026-26996** (HIGH)[G5]  \n6. `mocha@8.4.0 \u2192 depends_on \u2192 js-yaml@4.0.0` \u2013 **GHSA-52cp-r559-cp3m / CVE-2026-59869** (HIGH)[G6]  \n7. `mocha@8.4.0 \u2192 depends_on \u2192 serialize-javascript@5.0.1` \u2013 **GHSA-5c6j-r48x-rmvq** (HIGH)[G7]  \n8. `mocha@8.4.0 \u2192 depends_on \u2192 js-yaml@4.0.0` \u2013 **GHSA-5p4m-2wfm-xmqj / CVE-2026-59870** (HIGH)[G8]  \n9. `mocha@8.4.0 \u2192 depends_on \u2192 minimatch@3.0.4` \u2013 **GHSA-7r86-cg39-jmmj / CVE-2026-27903** (HIGH)[G9]  \n10. `mocha@8.4.0 \u2192 depends_on \u2192 minimatch@3.0.4` \u2013 **GHSA-f8q6-p94x-37v3 / CVE-2022-3517** (HIGH)[G10]\n\n**Summary of the remaining findings**\n\n- **Total advisories:** 26 on 10 vulnerable versions (17 high, 7 moderate, 2 low)[Exact totals].  \n- **Additional high-severity advisories** (beyond the 10 shown) include further issues in `minimatch`, `js-yaml`, `nanoid`, `brace-expansion`, `chokidar` \u2192 `readdirp` \u2192 `picomatch`, and `ansi-regex` (e.g., G11-G18).  \n- **Moderate-severity advisories** affect `js-yaml`, `nanoid`, `serialize-javascript`, `brace-expansion`, `picomatch`, etc. (G19-G25).  \n- **Low-severity advisories** involve `diff` and `brace-expansion` (G26-G27).  \n- The deepest vulnerable chain is **4 hops** from mocha (e.g., `mocha \u2192 minimatch \u2192 brace-expansion` or `mocha \u2192 chokidar \u2192 readdirp \u2192 picomatch`)[Exact totals].\n\n**Conclusion:** Your project using mocha 8.4.0 is exposed to multiple high-severity transitive vulnerabilities, plus several moderate and low ones. Remediation would require upgrading the listed dependencies to the fixed versions indicated in each graph fact.",
       "answer_checks": {
         "grounded": true,
         "cites": true,
         "missing_mentions": [],
         "ungrounded_ids": [],
-        "unknown_markers": []
+        "unknown_markers": [],
+        "ungrounded_versions": []
       }
     },
     {
@@ -173,14 +173,17 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The query asks for the set of projects that a specific advisory (CVE-2022-24999) impacts, which is a relational affected_projects pattern.",
-      "answer": "**Projects that have a dependency chain to the vulnerable `qs` package (CVE-2022-24999):**\n\n- **browser-sync@2.26.14** \u2192 depends_on \u2192 `qs@6.2.3`\u202f[GHSA-hrpp-h998-j3pp / CVE-2022-24999][G1]  \n- **express@4.17.1** \u2192 depends_on \u2192 `qs@6.7.0`\u202f[GHSA-hrpp-h998-j3pp / CVE-2022-24999][G2]  \n- **request@2.88.2** \u2192 depends_on \u2192 `qs@6.5.2`\u202f[GHSA-hrpp-h998-j3pp / CVE-2022-24999][G3]  \n- **karma@5.2.3** \u2192 depends_on \u2192 body-parser@1.19.0 \u2192 depends_on \u2192 `qs@6.7.0`\u202f[GHSA-hrpp-h998-j3pp / CVE-2022-24999][G4]  \n- **node-sass@4.14.1** \u2192 depends_on \u2192 request@2.88.2 \u2192 depends_on \u2192 `qs@6.5.2`\u202f[GHSA-hrpp-h998-j3pp / CVE-2022-24999][G5]  \n- **@angular/cli@11.2.0** \u2192 depends_on \u2192 universal-analytics@0.4.23 \u2192 depends_on \u2192 request@2.88.2 \u2192 depends_on \u2192 `qs@6.5.2`\u202f[GHSA-hrpp-h998-j3pp / CVE-2022-24999][G6]  \n- **@vue/cli-service@4.5.13** \u2192 depends_on \u2192 @vue/cli-shared-utils@4.5.13 \u2192 depends_on \u2192 request@2.88.2 \u2192 depends_on \u2192 `qs@6.5.2`\u202f[GHSA-hrpp-h998-j3pp / CVE-2022-24999][G7]  \n- **@vue/cli-service@4.5.13** \u2192 depends_on \u2192 webpack-bundle-analyzer@3.9.0 \u2192 depends_on \u2192 express@4.17.1 \u2192 depends_on \u2192 `qs@6.7.0`\u202f[GHSA-hrpp-h998-j3pp / CVE-2022-24999][G8]  \n- **react-scripts@4.0.3** \u2192 depends_on \u2192 webpack-dev-server@3.11.1 \u2192 depends_on \u2192 express@4.17.1 \u2192 depends_on \u2192 `qs@6.7.0`\u202f[GHSA-hrpp-h998-j3pp / CVE-2022-24999][G9]  \n- **jest@26.6.3** \u2192 depends_on \u2192 \u2026 \u2192 request@2.88.2 \u2192 depends_on \u2192 `qs@6.5.2`\u202f[GHSA-hrpp-h998-j3pp / CVE-2022-24999][G10]\n\n**Summary of the dataset**\n\n- Each of the above 10 projects has **1 advisory** affecting **1 vulnerable version** (all **high** severity) and the deepest vulnerable path ranges from 1 to 7 hops, matching the exact totals provided.  \n\nNo other projects in the supplied evidence are shown to depend on the vulnerable `qs` version, so only the listed projects are affected by CVE-2022-24999.",
+      "reasoning": "The question asks for the set of projects impacted by a specific advisory, which is a relational query about affected projects.",
+      "answer": "**All of the listed projects are affected by CVE-2022-24999.**  \n\nAffected dependency chains (high-severity, GHSA-hrpp-h998-j3pp):\n\n- `@angular/cli@11.2.0 \u2192 universal-analytics \u2192 request \u2192 qs@6.5.2` [G6]  \n- `@vue/cli-service@4.5.13 \u2192 @vue/cli-shared-utils \u2192 request \u2192 qs@6.5.2` [G7]  \n- `@vue/cli-service@4.5.13 \u2192 webpack-bundle-analyzer \u2192 express \u2192 qs@6.7.0` [G8]  \n- `browser-sync@2.26.14 \u2192 qs@6.2.3` [G1]  \n- `express@4.17.1 \u2192 qs@6.7.0` [G2]  \n- `request@2.88.2 \u2192 qs@6.5.2` [G3]  \n- `karma@5.2.3 \u2192 body-parser \u2192 qs@6.7.0` [G4]  \n- `node-sass@4.14.1 \u2192 request \u2192 qs@6.5.2` [G5]  \n- `jest@26.6.3 \u2192 \u2026 \u2192 request \u2192 qs@6.5.2` [G10]  \n\n**Summary of totals** (as given): each project has 1 high-severity advisory on 1\u20132 vulnerable versions, with deepest paths ranging from 1 to 7 hops. No additional projects are listed in the dataset.",
       "answer_checks": {
         "grounded": true,
         "cites": true,
-        "missing_mentions": [],
+        "missing_mentions": [
+          "react-scripts@4.0.3"
+        ],
         "ungrounded_ids": [],
-        "unknown_markers": []
+        "unknown_markers": [],
+        "ungrounded_versions": []
       }
     },
     {
@@ -189,15 +192,9 @@
       "expected_route": "relational",
       "route": "relational",
       "executed_route": "relational",
-      "pattern": "exposure",
+      "pattern": "affected_projects",
       "relation": null,
       "entities": [
-        {
-          "name": "follow-redirects",
-          "node_ids": [
-            "npm:follow-redirects"
-          ]
-        },
         {
           "name": "GHSA-74fj-2j2h-c42q",
           "node_ids": [
@@ -205,21 +202,20 @@
           ]
         }
       ],
-      "warnings": [
-        "no named project is a corpus root; answered which projects reach the advisory through follow-redirects"
-      ],
+      "warnings": [],
       "route_ok": true,
-      "pattern_ok": false,
+      "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The question asks which tracked projects include a vulnerable follow-redirects version identified by a specific advisory, which is a relational exposure query.",
-      "answer": "**All five tracked projects pull in a vulnerable\u202ffollow-redirects version (GHSA-74fj-2j2h-c42q / CVE-2022-0155).**  \n\n- `axios@0.21.1` \u2192 `follow-redirects@1.13.1`\u202f[\u202f[G1]\u202f]  \n- `browser-sync@2.26.14` \u2192 `http-proxy@1.18.1` \u2192 `follow-redirects@1.13.1`\u202f[\u202f[G2]\u202f]  \n- `karma@5.2.3` \u2192 `http-proxy@1.18.1` \u2192 `follow-redirects@1.13.0`\u202f[\u202f[G3]\u202f]  \n- `@vue/cli-service@4.5.13` \u2192 \u2026 \u2192 `follow-redirects@1.14.0`\u202f[\u202f[G4]\u202f]  \n- `react-scripts@4.0.3` \u2192 \u2026 \u2192 `follow-redirects@1.13.2`\u202f[\u202f[G5]\u202f]  \n\n**Supporting totals** \u2013 each of these projects has\u202f1\u202fhigh-severity advisory on\u202f1\u202fvulnerable version (as listed in the exact totals). No other tracked project is mentioned in the evidence.",
+      "reasoning": "The question asks which tracked projects include a vulnerable version of follow-redirects affected by a specific advisory, which is a graph lookup of projects impacted by that advisory.",
+      "answer": "All five tracked projects pull in a vulnerable follow-redirects version:\n\n- **@vue/cli-service@4.5.13** \u2192 \u2026 \u2192 **follow-redirects@1.14.0** [GHSA-74fj-2j2h-c42q] [G4]  \n- **axios@0.21.1** \u2192 **follow-redirects@1.13.1** [GHSA-74fj-2j2h-c42q] [G1]  \n- **browser-sync@2.26.14** \u2192 http-proxy@1.18.1 \u2192 **follow-redirects@1.13.1** [GHSA-74fj-2j2h-c42q] [G2]  \n- **karma@5.2.3** \u2192 http-proxy@1.18.1 \u2192 **follow-redirects@1.13.0** [GHSA-74fj-2j2h-c42q] [G3]  \n- **react-scripts@4.0.3** \u2192 \u2026 \u2192 **follow-redirects@1.13.2** [GHSA-74fj-2j2h-c42q] [G5]  \n\nEach project has 1 high-severity advisory on 1 vulnerable version (as shown in the exact totals).",
       "answer_checks": {
         "grounded": true,
         "cites": true,
         "missing_mentions": [],
         "ungrounded_ids": [],
-        "unknown_markers": []
+        "unknown_markers": [],
+        "ungrounded_versions": []
       }
     },
     {
@@ -249,14 +245,15 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The user asks for the dependency chain linking a specific package version to another, which is a dependency_path query.",
-      "answer": "**Dependency chain:**  \nreact-scripts@4.0.3 \u2192 jest@26.6.0 \u2192 @jest/core@26.6.3 \u2192 jest-config@26.6.3 \u2192 jest-environment-jsdom@26.6.2 \u2192 jsdom@16.4.0 \u2192 request@2.88.2 \u2192 http-signature@1.2.0 \u2192 jsprim@1.4.1 \u2192 json-schema@0.2.3[G1].\n\n**Details**  \n- Exactly one dependency path leads from react-scripts@4.0.3 to json-schema (9 hops)[G1].  \n- The json-schema version reached (0.2.3) is listed as vulnerable (GHSA-896r-f27r-55mw / CVE-2021-3918, CRITICAL)[G1].",
+      "reasoning": "The question asks for the dependency chain linking react-scripts@4.0.3 to json-schema, which is a classic dependency_path query.",
+      "answer": "**Path:**  \nreact-scripts@4.0.3 \u2192 jest@26.6.0 \u2192 @jest/core@26.6.3 \u2192 jest-config@26.6.3 \u2192 jest-environment-jsdom@26.6.2 \u2192 jsdom@16.4.0 \u2192 request@2.88.2 \u2192 http-signature@1.2.0 \u2192 jsprim@1.4.1 \u2192 **json-schema@0.2.3**[G1]  \n\n**Details:**  \n- This is the single dependency path found (1 total)[G1].  \n- The json-schema version reached is vulnerable (GHSA-896r-f27r-55mw / CVE-2021-3918, CRITICAL) and is fixed in json-schema@0.4.0[G1].",
       "answer_checks": {
         "grounded": true,
         "cites": true,
         "missing_mentions": [],
         "ungrounded_ids": [],
-        "unknown_markers": []
+        "unknown_markers": [],
+        "ungrounded_versions": []
       }
     },
     {
@@ -287,28 +284,29 @@
       "checks_ok": true,
       "failures": [],
       "reasoning": "The question asks for the chain of dependencies linking a specific package version to another, which is a dependency_path relational query.",
-      "answer": "**Answer:**\u202f@angular/cli\u202f11.2.0 pulls in\u202fansi-regex\u202fthrough three distinct dependency chains.\n\n**Dependency paths**\n\n1. `@angular/cli@11.2.0 \u2192 inquirer@7.3.3 \u2192 strip-ansi@6.0.0 \u2192 ansi-regex@5.0.0`\u202f[**G1**]  \n2. `@angular/cli@11.2.0 \u2192 pacote@11.2.4 \u2192 @npmcli/run-script@1.8.3 \u2192 node-gyp@7.1.2 \u2192 npmlog@4.1.2 \u2192 gauge@2.7.4 \u2192 strip-ansi@3.0.1 \u2192 ansi-regex@2.1.1`\u202f[**G2**]  \n3. `@angular/cli@11.2.0 \u2192 pacote@11.2.4 \u2192 @npmcli/run-script@1.8.3 \u2192 node-gyp@7.1.2 \u2192 npmlog@4.1.2 \u2192 gauge@2.7.4 \u2192 wide-align@1.1.3 \u2192 string-width@2.1.1 \u2192 strip-ansi@4.0.0 \u2192 ansi-regex@3.0.0`\u202f[**G3**]  \n\n**Summary:**\u202fExactly three dependency paths lead to\u202fansi-regex\u202fas listed above. (Total paths\u202f=\u202f3)",
+      "answer": "**Answer:** @angular/cli 11.2.0 pulls in ansi-regex through three distinct dependency chains (3 paths total)[G1][G2][G3].\n\n**Dependency chains**\n\n1. `@angular/cli@11.2.0 \u2192 inquirer@7.3.3 \u2192 strip-ansi@6.0.0 \u2192 ansi-regex@5.0.0` (vulnerable)[G1]  \n2. `@angular/cli@11.2.0 \u2192 pacote@11.2.4 \u2192 @npmcli/run-script@1.8.3 \u2192 node-gyp@7.1.2 \u2192 npmlog@4.1.2 \u2192 gauge@2.7.4 \u2192 strip-ansi@3.0.1 \u2192 ansi-regex@2.1.1`[G2]  \n3. `@angular/cli@11.2.0 \u2192 pacote@11.2.4 \u2192 @npmcli/run-script@1.8.3 \u2192 node-gyp@7.1.2 \u2192 npmlog@4.1.2 \u2192 gauge@2.7.4 \u2192 wide-align@1.1.3 \u2192 string-width@2.1.1 \u2192 strip-ansi@4.0.0 \u2192 ansi-regex@3.0.0` (vulnerable)[G3]",
       "answer_checks": {
         "grounded": true,
         "cites": true,
         "missing_mentions": [],
         "ungrounded_ids": [],
-        "unknown_markers": []
+        "unknown_markers": [],
+        "ungrounded_versions": []
       }
     },
     {
-      "id": "nb-01",
-      "question": "Which version of follow-redirects fixes CVE-2022-0155?",
+      "id": "rem-01",
+      "question": "How do I fix CVE-2022-0155 in axios@0.21.1?",
       "expected_route": "relational",
       "route": "relational",
       "executed_route": "relational",
-      "pattern": "neighbors",
-      "relation": "FIXED_IN",
+      "pattern": "remediation",
+      "relation": null,
       "entities": [
         {
-          "name": "follow-redirects",
+          "name": "axios@0.21.1",
           "node_ids": [
-            "npm:follow-redirects"
+            "npm:axios@0.21.1"
           ]
         },
         {
@@ -323,14 +321,168 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The question asks for the version that fixes a specific advisory, which maps to a FIXED_IN neighbor query.",
-      "answer": "**Version that fixes CVE-2022-0155:**\u202f`follow-redirects@1.14.7`[G1].",
+      "reasoning": "The query asks how to remediate a specific advisory for a specific package version, which matches the remediation pattern.",
+      "answer": "**Fix:** Refresh the lockfile (e.g., run `npm update follow-redirects`) so that **follow-redirects** is upgraded to a non-vulnerable version (\u2265 1.14.7; the plan upgrades to 1.16.0) [G1].\n\n**Details**\n\n- `axios@0.21.1` pulls in `follow-redirects@1.13.1`, which is vulnerable to **CVE-2022-0155** [G1].\n- The vulnerability is **fixable by a lockfile refresh**; the lowest safe version is `follow-redirects@1.14.7` [G1].\n- The remediation plan recommends refreshing the lockfile with `npm update follow-redirects`, which will install `follow-redirects@1.16.0`, satisfying all dependent ranges [G1].\n- According to the exact totals, there is **1 vulnerable copy** and it can be fixed **without an npm override** [Exact totals].",
       "answer_checks": {
         "grounded": true,
         "cites": true,
         "missing_mentions": [],
         "ungrounded_ids": [],
-        "unknown_markers": []
+        "unknown_markers": [],
+        "ungrounded_versions": []
+      }
+    },
+    {
+      "id": "rem-02",
+      "question": "What should mocha 8.4.0 upgrade to so it stops pulling in a vulnerable minimatch?",
+      "expected_route": "relational",
+      "route": "relational",
+      "executed_route": "relational",
+      "pattern": "remediation",
+      "relation": null,
+      "entities": [
+        {
+          "name": "mocha@8.4.0",
+          "node_ids": [
+            "npm:mocha@8.4.0"
+          ]
+        },
+        {
+          "name": "minimatch",
+          "node_ids": [
+            "npm:minimatch"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The user asks which version mocha should upgrade to to avoid the vulnerable minimatch, a remediation query about a specific project and its dependency.",
+      "answer": "**Upgrade mocha 8.4.0 to mocha 10.6.0** \u2013 this version declares minimatch \u201c^5.1.6\u201d, which avoids the vulnerable minimatch 3.0.4 [ G1 ].\n\n**Details**\n\n- mocha 8.4.0 pulls in minimatch 3.0.4, which is vulnerable to several high-severity advisories (GHSA-23c5-xmqv-rm74 / CVE-2026-27904, GHSA-3ppc-4f35-3m26 / CVE-2026-26996, GHSA-7r86-cg39-jmmj / CVE-2026-27903, GHSA-f8q6-p94x-37v3 / CVE-2022-3517) [ G1 ].\n- The dependent\u2019s declared range (\u201c3.0.4\u201d) excludes every fixed version; the lowest fixed version is minimatch 3.1.4, but mocha 8.4.0 does not accept it [ G1 ].\n- The remediation plan is to upgrade the project to mocha 10.6.0, which declares minimatch \u201c^5.1.6\u201d, thereby eliminating the vulnerable minimatch [ G1 ].\n- This fix can be applied without an npm override; 1 vulnerable copy is planned and 1 of 1 can be fixed without an override [ G1 ].",
+      "answer_checks": {
+        "grounded": true,
+        "cites": true,
+        "missing_mentions": [],
+        "ungrounded_ids": [],
+        "unknown_markers": [],
+        "ungrounded_versions": []
+      }
+    },
+    {
+      "id": "rem-03",
+      "question": "express@4.17.1 is exposed to CVE-2024-45296. What is the smallest upgrade that fixes it?",
+      "expected_route": "relational",
+      "route": "relational",
+      "executed_route": "relational",
+      "pattern": "remediation",
+      "relation": null,
+      "entities": [
+        {
+          "name": "express@4.17.1",
+          "node_ids": [
+            "npm:express@4.17.1"
+          ]
+        },
+        {
+          "name": "CVE-2024-45296",
+          "node_ids": [
+            "GHSA-37ch-88jc-xwx2",
+            "GHSA-9wv6-86v2-598j"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The question asks for the minimal version upgrade of express@4.17.1 that resolves the specific CVE, which is a remediation query about a named project and advisory.",
+      "answer": "**Upgrade express 4.17.1 \u2192 4.22.0** fixes the CVE-2024-45296 issue without needing an npm override.  \n\n**Details**  \n- The vulnerability comes from `path-to-regexp@0.1.7` required by `express@4.17.1` [G1].  \n- All fixed versions of `path-to-regexp` are excluded by the range declared in `express@4.17.1`.  \n- Upgrading the project to `express@4.22.0` changes the declared range to `~0.1.12`, which includes a fixed version and resolves the advisory [G1].  \n- This upgrade is the only fix that can be applied without an `overrides` entry, as indicated by the exact totals [Exact totals].  ",
+      "answer_checks": {
+        "grounded": true,
+        "cites": true,
+        "missing_mentions": [],
+        "ungrounded_ids": [],
+        "unknown_markers": [],
+        "ungrounded_versions": []
+      }
+    },
+    {
+      "id": "rem-04",
+      "question": "How can react-scripts 4.0.3 get rid of its dependency on the request package, which has no fixed version?",
+      "expected_route": "relational",
+      "route": "relational",
+      "executed_route": "relational",
+      "pattern": "remediation",
+      "relation": null,
+      "entities": [
+        {
+          "name": "react-scripts@4.0.3",
+          "node_ids": [
+            "npm:react-scripts@4.0.3"
+          ]
+        },
+        {
+          "name": "request",
+          "node_ids": [
+            "npm:request"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The query asks how to remove a vulnerable dependency (request) from a specific project version, which is a remediation\u2011type relational question.",
+      "answer": "**Short answer:** Upgrade the transitive dependency jsdom from 16.4.0 to 16.6.0 (refresh the lockfile); this newer jsdom version no longer pulls in request, eliminating the vulnerable copy without needing an npm override.  \n\n**Details**\n\n- react-scripts 4.0.3 brings in request 2.88.2 via the chain react-scripts \u2192 jest \u2192 @jest/core \u2192 jest-config \u2192 jest-environment-jsdom \u2192 jsdom 16.4.0 [G1].  \n- No newer request version fixes the advisory, so the only remediation is to remove it by upgrading the dependent package jsdom [G1].  \n- Updating jsdom 16.4.0 \u2192 16.6.0 drops request (and also drops request-promise-native) while still satisfying all declared version ranges, requiring only a lockfile refresh and no manifest changes or npm overrides [G1].  \n\n**Totals** \u2013 1 vulnerable dependency copy is present, with no fixed request version, but it can be fixed without an npm override [G1].",
+      "answer_checks": {
+        "grounded": true,
+        "cites": true,
+        "missing_mentions": [],
+        "ungrounded_ids": [],
+        "unknown_markers": [],
+        "ungrounded_versions": []
+      }
+    },
+    {
+      "id": "nb-01",
+      "question": "Which version of follow-redirects fixes CVE-2022-0155?",
+      "expected_route": "relational",
+      "route": "relational",
+      "executed_route": "relational",
+      "pattern": "neighbors",
+      "relation": "FIXED_IN",
+      "entities": [
+        {
+          "name": "CVE-2022-0155",
+          "node_ids": [
+            "GHSA-74fj-2j2h-c42q"
+          ]
+        },
+        {
+          "name": "follow-redirects",
+          "node_ids": [
+            "npm:follow-redirects"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The question asks for the version of a package that fixes a specific advisory, which is a neighbors query using the FIXED_IN relation.",
+      "answer": "**Version that fixes CVE-2022-0155:** `follow-redirects@1.14.7`[G1].  \n\n**Details**  \n- The graph shows a single relation indicating the vulnerability is fixed in `follow-redirects@1.14.7`[G1].  \n- Total relations found: 1.",
+      "answer_checks": {
+        "grounded": true,
+        "cites": true,
+        "missing_mentions": [],
+        "ungrounded_ids": [],
+        "unknown_markers": [],
+        "ungrounded_versions": []
       }
     },
     {
@@ -354,24 +506,25 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The question asks for the maintainer of a specific package, which is a direct neighbor relationship.",
-      "answer": "**Maintainers of the `qs` package:**\u202fljharb and nlf[G1][G2].",
+      "reasoning": "The query asks for the maintainer(s) of the qs package, which is a direct neighbor relationship.",
+      "answer": "**Maintainers:** ljharb and nlf.\n\n**Details**\n- The dependency graph shows two maintenance relations for the `qs` package: `qs --MAINTAINED_BY--> ljharb` [G1] and `qs --MAINTAINED_BY--> nlf` [G2].  \n- Total relations found: 2.",
       "answer_checks": {
         "grounded": true,
         "cites": true,
         "missing_mentions": [],
         "ungrounded_ids": [],
-        "unknown_markers": []
+        "unknown_markers": [],
+        "ungrounded_versions": []
       }
     },
     {
       "id": "nb-03",
       "question": "Under what conditions is CVE-2023-26136 exploitable?",
       "expected_route": "relational",
-      "route": "graph_guided_hybrid",
-      "executed_route": "graph_guided_hybrid",
-      "pattern": null,
-      "relation": null,
+      "route": "relational",
+      "executed_route": "relational",
+      "pattern": "neighbors",
+      "relation": "EXPLOITABLE_WHEN",
       "entities": [
         {
           "name": "CVE-2023-26136",
@@ -381,18 +534,19 @@
         }
       ],
       "warnings": [],
-      "route_ok": false,
-      "pattern_ok": false,
+      "route_ok": true,
+      "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The question asks for the exploit conditions described in the advisory text for a specific CVE, which is a hybrid request.",
-      "answer": "**CVE-2023-26136 can be exploited when a project uses a version of\u202f*tough-cookie* older than\u202f4.1.3 **and** creates a `CookieJar` with `rejectPublicSuffixes=false`**[A1][G1]**.  \n\n* The advisory (GHSA-72xf-g2v4-qvf3) describes the vulnerability as a Prototype Pollution issue that arises from improper handling of cookies in that mode.  \n* The graph shows this advisory is the sole entry linked to the named entity (1 advisory total).",
+      "reasoning": "The question asks for the exploit condition of a specific advisory, which maps to the EXPLOITABLE_WHEN neighbor relation.",
+      "answer": "**CVE-2023-26136 is exploitable when the `rejectPublicSuffixes` option is set to `false` (i.e., when using CookieJar with `rejectPublicSuffixes=false`).** [G1]",
       "answer_checks": {
         "grounded": true,
         "cites": true,
         "missing_mentions": [],
         "ungrounded_ids": [],
-        "unknown_markers": []
+        "unknown_markers": [],
+        "ungrounded_versions": []
       }
     },
     {
@@ -416,14 +570,15 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The query asks for the license of a specific package version, which is a direct neighbor relationship in the graph.",
-      "answer": "**Answer:** jsonwebtoken\u202f8.5.1 is licensed under the MIT license.\n\n**Supporting detail:** The graph fact states \u201cjsonwebtoken@8.5.1\u202f--LICENSED_UNDER-->\u202fMIT\u201d\u202f[G1].",
+      "reasoning": "The query asks for the license of a specific package version, which is a direct neighbor relation (LICENSED_UNDER) in the graph.",
+      "answer": "**Answer:** jsonwebtoken@8.5.1 is licensed under the **MIT** license.\n\n**Supporting detail:** The graph fact shows the licensing relationship directly: jsonwebtoken@8.5.1 --LICENSED_UNDER--> MIT[G1].",
       "answer_checks": {
         "grounded": true,
         "cites": true,
         "missing_mentions": [],
         "ungrounded_ids": [],
-        "unknown_markers": []
+        "unknown_markers": [],
+        "ungrounded_versions": []
       }
     },
     {
@@ -440,14 +595,15 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The query seeks advisory descriptions of prototype pollution via __proto__ keys, which is a textual search rather than a specific package/version graph query.",
-      "answer": "**Advisories that describe attackers polluting\u202fObject.prototype via crafted `__proto__` keys:**  \n\n- **GHSA-vh95-rmgr-6w4m (minimist)** \u2013 mentions that parsing `--__proto__.y=Polluted` modifies the prototype of\u202f`Object`\u202f[A2].  \n- **GHSA-p9pc-299p-vxgp (yargs-parser)** \u2013 notes that an argument like `--foo.__proto__.bar baz` adds a property to the prototype of\u202f`Object`\u202f[A5].\n\nThese are the only advisories in the provided evidence that explicitly describe prototype-pollution of\u202f`Object.prototype` through crafted `__proto__` keys.",
+      "reasoning": "The query seeks advisory descriptions of prototype pollution via __proto__ keys, which is a textual search rather than a graph query about specific packages or IDs.",
+      "answer": "**Advisories that describe attackers polluting Object.prototype via crafted `__proto__` keys:**  \n\n- **GHSA-vh95-rmgr-6w4m (minimist)** \u2013 modifies the prototype of `Object` by parsing arguments such as `--__proto__.y=Polluted` [A2].  \n- **GHSA-p9pc-299p-vxgp (yargs-parser)** \u2013 adds properties to all objects by parsing arguments like `--foo.__proto__.bar baz` [A5].  ",
       "answer_checks": {
         "grounded": true,
         "cites": true,
         "missing_mentions": [],
         "ungrounded_ids": [],
-        "unknown_markers": []
+        "unknown_markers": [],
+        "ungrounded_versions": []
       }
     },
     {
@@ -465,13 +621,14 @@
       "checks_ok": true,
       "failures": [],
       "reasoning": "The question asks for a general explanation of ReDoS bugs in URL path matching libraries, not about a specific package, version, or advisory.",
-      "answer": "**Short answer:**  \nURL-path-matching libraries generate regular expressions from route definitions. When those generated patterns contain multiple parameters in a single segment (e.g., `/:a-:b` or `/:a-:b-:c`), the regex engine must explore many overlapping ways to match the input. Crafted URLs cause catastrophic backtracking, making the match take exponential or polynomial time and blocking the single-threaded JavaScript event loop \u2192 a denial-of-service.  \n\n**Supporting details**\n\n* **Two parameters in one segment** \u2013 `path-to-regexp` builds a regex such as `/^\\/([^\\/]+?)-([^\\/]+?)\\/?$/` for `/:a-:b`. An attacker can supply a long string like `/a${'-a'.repeat(8\u202f000)}/a`; the engine backtracks over every possible split of the repeated `-a` sequence, slowing the match >1000\u00d7 ([A1]).\n* **Three or more parameters** \u2013 The backtrack protection added in early versions only covers two parameters. With three or more (e.g., `/:a-:b-:c`), the generated lookahead fails to block single separator characters, so capture groups overlap and cause catastrophic backtracking ([A4]).\n* **Other libraries** \u2013 Similar ReDoS patterns exist in `path-parse` (its `splitDeviceRe`, `splitTailRe`, `splitPathRe` regexes have polynomial worst-case time) and in `hosted-git-info` (the `shortcutMatch` regex in `fromUrl` backtracks badly) ([A2], [A3]).\n* **Impact** \u2013 Because JavaScript regex matching runs on the main thread, the excessive backtracking blocks the event loop, leading to high latency or complete service outage ([A1]).\n* **Mitigations** \u2013 Upgrading to patched versions (e.g., `path-to-regexp@8.0.0`, `path-parse` fixed versions, `hosted-git-info@3.0.8`) or supplying custom non-greedy regexes for later parameters prevents the unsafe pattern ([A1], [A4]). Limiting URL length is another practical workaround.  \n\n**Summary of advisories** \u2013 The dataset contains five relevant ReDoS advisories (A1-A5); no other evidence is provided.",
+      "answer": "**Short answer:**  \nURL-path matching libraries generate regular expressions from route definitions. When a segment contains two or more parameters separated by non-dot characters (e.g., `/:a-:b` or `/:a-:b-:c`), the library builds a pattern that backtracks catastrophically on crafted input, causing polynomial-time matching and blocking the event loop \u2192 a denial-of-service. [A1][A4]\n\n**Details**\n\n* **How the bug appears** \u2013 The library turns a route like `/:a-:b` into a regex such as `/^\\/([^\\/]+?)-([^\\/]+?)\\/?$/`. An attacker can supply a long string that forces the engine to try every possible split of the repeated part (e.g., `/a${'-a'.repeat(8_000)}/a`). The engine backtracks through all combinations, leading to extreme slowdown. [A1]\n\n* **Why it is severe** \u2013 JavaScript runs regex matching on the single-threaded event loop; the exponential backtracking blocks the thread, inflating latency from ~1 ms to ~600 ms (or more) under load. [A1]\n\n* **Scope of affected libraries**  \n  * **path-to-regexp** \u2013 vulnerable when a segment has two parameters (`/:a-:b`) [A1] and when it has three or more (`/:a-:b-:c`) [A4].  \n  * **path-parse** \u2013 uses `splitDeviceRe`, `splitTailRe`, `splitPathRe` regexes that exhibit polynomial worst-case time. [A2]  \n  * **hosted-git-info** \u2013 the `shortcutMatch` regex in `fromUrl` can cause ReDoS. [A3]  \n  * **browserslist** \u2013 parsing of query strings can trigger ReDoS. [A5]\n\n* **Remediation**  \n  * **Upgrade** \u2013  \n    * `path-to-regexp`: users of 0.1 \u2192 0.1.10; all others \u2192 8.0.0 (adds backtrack protection). [A1]  \n    * For the three-parameter case, upgrade to 0.1.13. [A4]  \n  * **Custom regex** \u2013 supply explicit regex for parameters after the first (e.g., `/:a-:b([^-/]+)` or `/:a-:b([^-/]+)-:c([^-/]+)`). [A1][A4]  \n  * **Strict mode** \u2013 `path-to-regexp@7.1.0` can enable `strict:true` to error on risky patterns. [A1]  \n  * **Length limits** \u2013 cap URL length to reduce attack surface. [A1][A4]\n\n* **Summary of advisories** \u2013 The dataset lists five ReDoS advisories (A1-A5) affecting URL-path matching or related parsing; all involve regexes that backtrack catastrophically on crafted inputs. No other advisories are present.",
       "answer_checks": {
         "grounded": true,
         "cites": true,
         "missing_mentions": [],
         "ungrounded_ids": [],
-        "unknown_markers": []
+        "unknown_markers": [],
+        "ungrounded_versions": []
       }
     },
     {
@@ -488,14 +645,15 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The query asks about a class of vulnerabilities (authorization header leakage on redirects) without naming any package, version, or advisory, so it is a semantic question.",
-      "answer": "**Yes.** Several advisories report that Axios (and its redirect-handling dependency\u202f`follow-redirects`) can forward authorization-related headers to a redirected host.\n\n**Relevant advisories (most severe first)**  \n\n1. **GHSA-j5f8-grm9-p9fc** \u2013 Axios: *Proxy-Authorization* header leaks to the redirect target when the proxy is re-evaluated to a direct connection\u202f[A1][A3]  \n2. **GHSA-p92q-9vqr-4j8v** \u2013 Axios: *Proxy-Authorization* credential leak to the origin server across an HTTP-to-HTTPS redirect\u202f[A2][A5]  \n3. **GHSA-r4q5-vmmm-2653** \u2013 `follow-redirects`: custom authentication headers (e.g., `X-API-Key`, `Authorization`) are not stripped on cross-domain redirects, so they are sent to the new host\u202f[A4]\n\n**Summary of the leaks**\n\n- When an initial request goes through an authenticated proxy, Axios may retain the `Proxy-Authorization` header after a redirect to a URL that is no longer proxied, sending the header to the redirect target\u202f[A1][A2][A3][A5].  \n- `follow-redirects` only removes the standard `authorization`, `proxy-authorization`, and `cookie` headers; any other custom auth header is forwarded unchanged to a cross-domain redirect target\u202f[A4].\n\nThus, the dataset contains multiple vulnerabilities where authorization-related headers can be leaked when a client follows a redirect to another host.",
+      "reasoning": "The query asks about a type of vulnerability in general, without naming any package, version, or advisory, so it should be answered from advisory text (semantic route).",
+      "answer": "**Yes.** Several advisories describe leaks of authorization-related headers when a client follows a redirect to another host.\n\n**Relevant advisories (most severe first)**  \n\n1. **GHSA-r4q5-vmmm-2653 (follow-redirects)** \u2013 custom authentication headers (e.g., `X-API-Key`) are forwarded to cross-domain redirect targets because only `authorization`, `proxy-authorization`, and `cookie` are stripped. [A4]  \n2. **GHSA-j5f8-grm9-p9fc (axios)** \u2013 the `Proxy-Authorization` header can be retained and sent to the redirect target when a proxied request is redirected to a direct connection. [A1]  \n3. **GHSA-p92q-9vqr-4j8v (axios)** \u2013 similar proxy-credential leak across an HTTP-to-HTTPS redirect in the Node.js HTTP adapter. [A2]  \n4. **GHSA-j5f8-grm9-p9fc (axios)** \u2013 duplicate entry describing the same proxy-authorization leak on redirect. [A3]  \n5. **GHSA-p92q-9vqr-4j8v (axios)** \u2013 another description of the proxy-authorization credential leak on redirect. [A5]  \n\n**Summary**  \n- Axios\u2019s Node.js HTTP adapter may retain a `Proxy-Authorization` header when a request follows a redirect to a host that is no longer reached via the proxy, exposing proxy credentials to the redirect target [A1][A2][A3][A5].  \n- The `follow-redirects` library (used by Axios) only removes standard `authorization`, `proxy-authorization`, and `cookie` headers; any custom auth header is sent unchanged to a cross-domain redirect target, leaking those credentials [A4].\n\nNo other advisories in the provided dataset address this issue.",
       "answer_checks": {
         "grounded": true,
         "cites": true,
         "missing_mentions": [],
         "ungrounded_ids": [],
-        "unknown_markers": []
+        "unknown_markers": [],
+        "ungrounded_versions": []
       }
     },
     {
@@ -512,14 +670,17 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The question asks about general security issues of extracting untrusted tar archives, without referencing any specific package, version, or advisory.",
-      "answer": "**Extracting untrusted tar archives with\u202fnode-tar can lead to several security problems, including**\n\n1. **Interpretation-differential (file-smuggling) via PAX size overrides** \u2013 a crafted archive is parsed differently by node-tar than by other tar implementations, allowing hidden malicious files.\u202f[A1]  \n2. **Arbitrary file creation/overwrite via hard-link path traversal** \u2013 hard-links can escape the extraction directory and write to any reachable file.\u202f[A2]  \n3. **Arbitrary file overwrite and symlink poisoning** \u2013 insufficient sanitisation of `linkpath` lets attackers create hard-links or symlinks to arbitrary locations (e.g., `/etc/passwd`).\u202f[A3]  \n4. **Hard-link path traversal using drive-relative linkpaths** \u2013 link targets like `C:../target.txt` bypass checks and overwrite files outside the intended root.\u202f[A4]  \n5. **Arbitrary file read/write via hard-link-through-symlink chains** \u2013 a combination of symlinks and a hard-link lets an attacker read or modify files outside the extraction directory.\u202f[A5]\n\nThese issues arise from the way node-tar handles PAX headers, link-path resolution, and path sanitisation during extraction, providing primitives for file smuggling, arbitrary read/write, and symlink poisoning when processing attacker-controlled tarballs.",
+      "reasoning": "The question asks about general security issues of extracting untrusted tar archives, which is not a graph\u2011based query about specific packages, versions, or advisories.",
+      "answer": "**Extracting an untrusted tar archive with node-tar can cause a range of security problems, including**\n\n* Interpretation-differential (tar-smuggling) that lets an attacker hide or reveal files depending on the parser used.  \n* Arbitrary file creation or overwrite via hard-link path-traversal.  \n* Symlink poisoning and arbitrary file overwrite through unsanitised link targets.  \n* Hard-link escapes using drive-relative linkpaths (e.g., `C:../\u2026`).  \n* Arbitrary file read/write via a hard-link-to-outside-extraction-root chain that also uses symlinks.\n\n**Supporting advisories**\n\n| Advisory (GHSA) | Main problem | Evidence |\n|-----------------|--------------|----------|\n| **GHSA-5qq5-rm4j-mr97** (A3) | Arbitrary file overwrite and symlink poisoning from insufficient path sanitisation of `linkpath` (hard-links & symlinks) | [A3] |\n| **GHSA-qffp-2rhf-9h96** (A4) | Hard-link path-traversal via drive-relative linkpath (`C:../target.txt`) \u2192 overwrite outside `cwd` | [A4] |\n| **GHSA-83g3-92jg-28cx** (A5) | Arbitrary file read/write through a hard-link-escape-via-symlink chain | [A5] |\n| **GHSA-34x7-hfp2-rc4v** (A2) | Arbitrary file creation/overwrite via hard-link path-traversal (hardlink to `../secret.txt`) | [A2] |\n| **GHSA-vmf3-w455-68vh** (A1) | Interpretation-differential (tar-smuggling) caused by PAX size override on GNU long-name/long-link headers | [A1] |\n\n**Summary of the dataset**\n\nThe evidence lists **5 distinct advisories** affecting `node-tar` when extracting attacker-controlled archives; no other vulnerabilities are recorded in this dataset.",
       "answer_checks": {
-        "grounded": true,
+        "grounded": false,
         "cites": true,
         "missing_mentions": [],
-        "ungrounded_ids": [],
-        "unknown_markers": []
+        "ungrounded_ids": [
+          "GHSA-5QQ5-RM4J-MR97"
+        ],
+        "unknown_markers": [],
+        "ungrounded_versions": []
       }
     },
     {
@@ -543,14 +704,15 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The query asks for a summary of vulnerability types affecting lodash, which requires advisory text rather than a specific graph relationship.",
-      "answer": "**Lodash has been affected by several vulnerability types:**  \n\n1. **Command Injection** \u2013\u202fGHSA-35jh-r3h4-6jhm / CVE-2021-23337 / CVE-2026-4800 (HIGH)\u202f[G1][A4]  \n2. **Prototype Pollution** \u2013\u202fmultiple advisories:  \n   * GHSA-p6mc-m468-83gw / CVE-2020-8203 (HIGH)\u202f[G2][A3]  \n   * GHSA-xxjr-mmjv-4gpg / CVE-2025-13465 / CVE-2026-2950 (MODERATE)\u202f[G6][A1]  \n   * GHSA-f23m-r3pf-42rh / CVE-2025-13465 / CVE-2026-2950 (MODERATE)\u202f[G5][A5]  \n3. **Code/Template Injection** \u2013\u202fGHSA-r5fr-rjxr-66jc / CVE-2021-23337 / CVE-2026-4800 (HIGH)\u202f[G3][A2]  \n4. **Regular Expression Denial-of-Service (ReDoS)** \u2013\u202fGHSA-29mw-wpgm-hmr9 / CVE-2020-28500 (MODERATE)\u202f[G4]  \n\n**Summary:** The dataset links lodash to **6 advisories** covering the four vulnerability categories above, with two HIGH-severity prototype-pollution advisories and one HIGH-severity command-injection advisory, plus moderate-severity ReDoS and additional prototype-pollution cases.",
+      "reasoning": "The query asks for a summary of vulnerability types affecting lodash, which requires advisory text rather than a direct graph fact.",
+      "answer": "**Lodash has been affected by four kinds of vulnerabilities:** command injection, prototype-pollution, code-injection via `_.template`, and a regular-expression denial-of-service (ReDoS) [ G1 ][ G2 ][ G3 ][ G4 ].\n\n**Details (most severe first)**  \n\n| Severity | Advisory (id / CVE) | Vulnerability type | Affected feature(s) |\n|----------|-------------------|-------------------|---------------------|\n| HIGH | GHSA-35jh-r3h4-6jhm / CVE-2021-23337, CVE-2026-4800 \u2013 Command Injection in lodash (template) [ G1 ][ A4 ] |\n| HIGH | GHSA-p6mc-m468-83gw / CVE-2020-8203 \u2013 Prototype Pollution in lodash (pick, set, setWith, update, updateWith, zipObjectDeep) [ G2 ][ A3 ] |\n| HIGH | GHSA-r5fr-rjxr-66jc / CVE-2021-23337, CVE-2026-4800 \u2013 Code Injection via `_.template` imports key names [ G3 ][ A2 ] |\n| MODERATE | GHSA-29mw-wpgm-hmr9 / CVE-2020-28500 \u2013 Regular Expression Denial of Service (ReDoS) [ G4 ] |\n| MODERATE | GHSA-f23m-r3pf-42rh / CVE-2025-13465, CVE-2026-2950 \u2013 Prototype Pollution via array-path bypass in `_.unset`/`_.omit` [ G5 ][ A5 ] |\n| MODERATE | GHSA-xxjr-mmjv-4gpg / CVE-2025-13465, CVE-2026-2950 \u2013 Prototype Pollution in `_.unset`/`_.omit` [ G6 ][ A1 ] |\n\n**Summary** \u2013 The dataset links **six advisories** to lodash, covering the four vulnerability categories listed above [ G1-G6 ]. No other vulnerability types are recorded in this evidence.",
       "answer_checks": {
         "grounded": true,
         "cites": true,
         "missing_mentions": [],
         "ungrounded_ids": [],
-        "unknown_markers": []
+        "unknown_markers": [],
+        "ungrounded_versions": []
       }
     },
     {
@@ -574,14 +736,15 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The query asks how an attacker could exploit vulnerabilities in the dependencies of a specific package version, requiring advisory text explanation rather than a pure graph lookup.",
-      "answer": "**An attacker can abuse several of Express\u202f4.17.1\u2019s transitive dependencies to cause denial-of-service, open-redirects, prototype-pollution and XSS attacks.**  \n\n**Key exploitation paths (most severe first)**  \n\n| Severity | Dependency | Vulnerability & CVE | How it can be exploited |\n|----------|------------|----------------------|--------------------------|\n| HIGH | **path-to-regexp** (used by Express routing) | GHSA-37ch-88jc-xwx2 / CVE-2024-45296, CVE-2026-4867 \u2013 ReDoS via multiple route parameters; also outputs back-tracking regexes (GHSA-9wv6-86v2-598j) and contains a ReDoS (GHSA-rhx6-c78j-4q9w) | An attacker supplies specially crafted route parameters that cause the generated regular expression to backtrack exponentially, exhausting CPU and making the server unresponsive[G1][G2][G5]. |\n| HIGH | **qs** (query-string parser) | GHSA-hrpp-h998-j3pp \u2013 Prototype Pollution (CVE-2022-24999)[G3] | By sending a malicious query string that injects `__proto__` properties, an attacker can pollute the prototype of objects used by the app, potentially altering logic or causing crashes. |\n| HIGH | **body-parser** (url-encoded parser) | GHSA-qwcr-r2fm-qrc7 \u2013 DoS when URL-encoding is enabled (CVE-2024-45590)[G4] | Supplying a deeply nested or extremely long URL-encoded payload triggers excessive processing, leading to denial-of-service. |\n| HIGH | **express** core | GHSA-rv95-896h-c2vc \u2013 Open Redirect (CVE-2024-29041)[G8]; GHSA-qw6h-vgh9-j6wx \u2013 XSS via `response.redirect()` (CVE-2024-43796)[G12] | *Open Redirect*: an attacker provides a malformed URL to `res.location()`/`res.redirect()` that bypasses allow-list checks, causing users to be sent to attacker-controlled sites[A3]. *XSS*: if untrusted input reaches `response.redirect()`, the attacker can inject script that executes when the user clicks the generated link[A1]. |\n| MODERATE | **qs** | GHSA-4mjr-xmp4-gh2g \u2013 DoS via attacker-controlled `isBuffer` (CVE-2026-82417)[G6]; GHSA-6rw7-vpxm-498p \u2013 arrayLimit bypass leading to memory exhaustion (CVE-2025-15284)[G7]; GHSA-w7fw-mjwx-w883 \u2013 arrayLimit bypass in comma parsing (CVE-2026-2391)[G14] | Crafting a query string that triggers `qs.parse` with `plainObjects:true` or `allowPrototypes:true` creates an object whose `constructor.isBuffer` is non-callable; a subsequent `qs.stringify` throws a `TypeError`, crashing the process[A5]. The arrayLimit bypasses allow large arrays, exhausting memory. |\n| LOW | **serve-static** | GHSA-cm22-4g7w-348p \u2013 Template injection \u2192 XSS (CVE-2024-43800)[G9] | Supplying malicious input that reaches `serve-static`\u2019s template rendering can inject script that runs in the client[A2]. |\n| LOW | **send** | GHSA-m6fv-jmcg-4jfg \u2013 Template injection \u2192 XSS (CVE-2024-43799)[G10] | Similar to `serve-static`, untrusted data passed to `SendStream.redirect()` can lead to XSS[A4]. |\n| LOW | **cookie** | GHSA-pxg6-pf52-xh8x \u2013 Accepts out-of-bounds characters in name/path/domain (CVE-2024-47764)[G11] | Malformed cookie attributes may be accepted, potentially enabling injection attacks in downstream processing. |\n| LOW | **body-parser** (invalid limit) | GHSA-v422-hmwv-36x6 \u2013 Invalid limit silently disables size enforcement (CVE-2026-12590)[G13] | An attacker can set a malformed `limit` option to bypass size checks, allowing oversized payloads. |\n\n**Summary of the dataset**  \nAll 14 advisories linked to Express\u202f4.17.1 are covered above (10 listed in detail, the remainder summarized). No other vulnerabilities are present in the provided evidence.",
+      "reasoning": "The query asks how an attacker could exploit vulnerabilities in express@4.17.1, which requires advisory text explanation rather than a direct graph query.",
+      "answer": "**An attacker can exploit several of Express 4.17.1\u2019s transitive dependencies to cause denial-of-service, open-redirects, prototype-pollution and XSS attacks.**  \n\n**Key exploitation vectors**\n\n| Severity | Advisory (ID / CVE) | How it can be abused |\n|----------|---------------------|----------------------|\n| HIGH | **GHSA-37ch-88jc-xwx2** / CVE-2024-45296 / CVE-2026-4867 \u2013 *path-to-regexp* ReDoS[G1] | A crafted route with multiple parameters makes the regular expression backtrack excessively, leading to a Regular Expression Denial of Service. |\n| HIGH | **GHSA-9wv6-86v2-598j** \u2013 *path-to-regexp* backtracking regexes[G2] | Same ReDoS effect via generated backtracking patterns. |\n| HIGH | **GHSA-hrpp-h998-j3pp** / CVE-2022-24999 \u2013 *qs* Prototype Pollution[G3] | An attacker can supply specially-crafted query strings that pollute the prototype of objects, potentially altering application logic. |\n| HIGH | **GHSA-qwcr-r2fm-qrc7** / CVE-2024-45590 \u2013 *body-parser* DoS when URL-encoding is enabled[G4] | Supplying maliciously encoded payloads can exhaust resources and crash the server. |\n| HIGH | **GHSA-rhx6-c78j-4q9w** \u2013 *path-to-regexp* ReDoS[G5] | Another ReDoS path via the routing library. |\n| HIGH | **GHSA-rv95-896h-c2vc** / CVE-2024-29041 \u2013 Express.js Open Redirect[G8] | An attacker can craft a malformed URL that bypasses allow-list checks and forces a redirect to an attacker-controlled site[A3]. |\n| MODERATE | **GHSA-4mjr-xmp4-gh2g** / CVE-2026-82417 \u2013 *qs* DoS via attacker-controlled `isBuffer`[G6] | By sending a query string that triggers a non-callable `constructor.isBuffer`, `qs.stringify` throws a `TypeError`, causing a denial-of-service. |\n| MODERATE | **GHSA-6rw7-vpxm-498p** / CVE-2025-15284 \u2013 *qs* arrayLimit bypass memory exhaustion[G7] | Malformed bracket notation can inflate memory usage and crash the process. |\n| MODERATE | **GHSA-w7fw-mjwx-w883** / CVE-2026-2391 \u2013 *qs* arrayLimit bypass in comma parsing DoS[G14] | Similar memory-exhaustion vector via comma-separated parameters. |\n| LOW | **GHSA-cm22-4g7w-348p** / CVE-2024-43800 \u2013 *serve-static* template injection \u2192 XSS[G9] | Untrusted input passed to `redirect()` can lead to XSS. |\n| \u2026 | \u2026 | \u2026 |\n\n**Additional vulnerable pieces (not listed individually)**  \n\n- **send** (template-injection XSS) \u2013 GHSA-m6fv-jmcg-4jfg[G10]  \n- **cookie** (out-of-bounds characters) \u2013 GHSA-pxg6-pf52-xh8x[G11]  \n- **body-parser** (invalid limit disables size enforcement) \u2013 GHSA-v422-hmwv-36x6[G13]\n\n**Summary of the dataset**  \n\n- Total linked advisories: **14** (6 HIGH, 4 MODERATE, 4 LOW).  \n- Exploitable outcomes include **Regular Expression Denial-of-Service**, **Prototype Pollution**, **Denial-of-Service via qs or body-parser**, **Open Redirect**, and **Cross-Site Scripting**.  \n\n**How an attacker would proceed**  \n\n1. **Inject malicious route parameters** to trigger ReDoS in `path-to-regexp` (G1, G2, G5).  \n2. **Supply crafted query strings** to `qs` to achieve prototype pollution (G3) or cause `qs.stringify` to throw (G6, G7, G14).  \n3. **Send specially encoded payloads** to `body-parser` to exhaust resources (G4, G13).  \n4. **Provide a malformed URL** to `res.redirect()`/`res.location()` to bypass allow-lists and redirect users to attacker-controlled sites (G8, detailed in A3).  \n5. **Pass untrusted input** to response redirects, `serve-static`, or `send` to achieve XSS (G9, G10, G12 via A1).  \n\nThese vectors together illustrate the multiple ways an attacker could compromise an application that depends on **express 4.17.1**.",
       "answer_checks": {
         "grounded": true,
         "cites": true,
         "missing_mentions": [],
         "ungrounded_ids": [],
-        "unknown_markers": []
+        "unknown_markers": [],
+        "ungrounded_versions": []
       }
     },
     {
@@ -605,14 +768,15 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The query asks for advisory text about denial of service for a named package, which is a hybrid request.",
-      "answer": "**Answer:**  \nThe advisory\u202fGHSA-25hc-qcg6-38wj (CVE-2024-38355) says a specially-crafted Socket.IO packet can trigger an uncaught exception on the server, causing the Node.js process to exit \u2013 a denial-of-service condition\u202f[A1]. The other advisory (GHSA-fxwf-4rqh-v8g3 / CVE-2020-28481) concerns a CORS misconfiguration and does not mention denial of service\u202f[G2].\n\n**Details**  \n- **GHSA-25hc-qcg6-38wj (CVE-2024-38355)** \u2013 \u201cA specially crafted Socket.IO packet can trigger an uncaught exception on the Socket.IO server, thus killing the Node.js process.\u201d\u202f[A1]  \n- **GHSA-fxwf-4rqh-v8g3 (CVE-2020-28481)** \u2013 only describes a CORS misconfiguration; no DoS impact is noted.\u202f[G2]  \n\n**Totals**: 2 socket.io advisories are referenced in the data.",
+      "reasoning": "The query asks for advisory text about denial\u2011of\u2011service for a named package, which is a hybrid request for prose explanation rather than a pure graph fact.",
+      "answer": "**Answer:**  \nThe advisory GHSA-25hc-qcg6-38wj (CVE-2024-38355) says that a specially-crafted Socket.IO packet can trigger an uncaught \u201cerror\u201d event, causing the Node.js process to crash \u2013 a denial-of-service condition [G1][A1].\n\n**Details**\n\n- **Impact:** An unhandled \u201cerror\u201d event throws an exception and terminates the server process (DoS) [A1].\n- **Affected versions:**  \n  - `4.6.2\u2026latest` \u2013 no action needed.  \n  - `3.0.0\u20264.6.1` \u2013 upgrade to at least `socket.io@4.6.2`.  \n  - `2.3.0\u20262.5.0` \u2013 upgrade to `socket.io@2.5.1` [A1].\n- **Fix:** Included in `socket.io@4.6.2` (May 2023) and back-ported to the 2.x branch [A1].\n- **Workaround:** Attach a listener for the \u201cerror\u201d event to prevent the crash [A1].\n\nThe other socket.io advisory (GHSA-fxwf-4rqh-v8g3, CVE-2020-28481) concerns a CORS misconfiguration and does not mention denial-of-service [G2].",
       "answer_checks": {
         "grounded": true,
         "cites": true,
         "missing_mentions": [],
         "ungrounded_ids": [],
-        "unknown_markers": []
+        "unknown_markers": [],
+        "ungrounded_versions": []
       }
     },
     {
@@ -638,14 +802,15 @@
       "failures": [
         "chunks not about follow-redirects: ['GHSA-p92q-9vqr-4j8v::0', 'GHSA-j5f8-grm9-p9fc::0', 'GHSA-jr5f-v2jv-69x6::0', 'GHSA-j5f8-grm9-p9fc::1']"
       ],
-      "reasoning": "The query asks for an explanatory description of a vulnerability affecting a specific package version, which requires advisory text rather than a pure graph lookup.",
-      "answer": "**Short answer:**  \nIn axios\u202f0.21.1 the bundled **follow-redirects** library forwards any custom authentication header (e.g.,\u202f`X-API-Key`) when a request follows a cross-domain redirect, because it only strips the standard `authorization`, `proxy-authorization`, and `cookie` headers. The header is sent to the new host, allowing an attacker-controlled redirect target to capture the credential\u202f\u2014\u202fa direct data-leak.\u202f[ G4 ][ G23 ][ G24 ][ A2 ]\n\n**Supporting details**\n\n| Severity | Advisory / Graph ID | Description |\n|----------|---------------------|-------------|\n| **HIGH** | G4 \u2013 *Exposure of sensitive information in follow-redirects* | Follow-redirects can expose sensitive data during redirects. |\n| **MODERATE** | G23 \u2013 *Exposure of Sensitive Information to an Unauthorized Actor in follow-redirects* | Confirms that unauthorized parties can receive leaked information. |\n| **MODERATE** | G24 \u2013 *follow-redirects leaks Custom Authentication Headers to Cross-Domain Redirect Targets* | Custom auth headers (e.g., `X-API-Key`) are not stripped and are sent to the redirect target. |\n| **MODERATE** | G18 \u2013 *follow-redirects' Proxy-Authorization header kept across hosts* | Even proxy credentials may be retained across host changes. |\n| **MODERATE** | A2 \u2013 Advisory text for GHSA-r4q5-vmmm-2653 | Shows the exact code (`removeMatchingHeaders(/^(?:(?:proxy-)?authorization|cookie)$/i)`) that only matches three headers, leaving custom ones untouched, and gives a concrete attack scenario where `X-API-Key` is leaked to `evil.com`. |\n\n**How the leak occurs (per A2)**  \n\n1. An app uses axios\u202f0.21.1 with a custom auth header, e.g. `X-API-Key: sk-live-secret123`.  \n2. The server responds with a cross-domain redirect (301/302/307/308).  \n3. `follow-redirects` builds the next request and **only** removes `authorization`, `proxy-authorization`, and `cookie` headers (regex shown in A2).  \n4. The custom header is **not** removed, so it is sent verbatim to the attacker-controlled redirect target.  \n5. The attacker captures the header and thus the credential.\n\n**Impact** \u2013 Any axios user (Node.js) who relies on automatic redirects can unintentionally expose API keys, tokens, or other secret headers to arbitrary domains, leading to credential leakage and potential downstream attacks.\n\n**Scope** \u2013 This issue is present in the follow-redirects version used by axios\u202f0.21.1 and affects all projects that depend on that combination. The dataset lists **29** total advisories; the most relevant to this question are the five shown above. The remaining advisories (e.g., prototype-pollution, DoS, SSRF, etc.) are unrelated to the follow-redirects header-leak scenario.",
+      "reasoning": "The query asks for an explanatory description of a known vulnerability affecting a specific package version, which fits the graph_guided_hybrid route.",
+      "answer": "**Short answer:**  \nWhen axios 0.21.1 follows a cross-domain redirect, the bundled **follow-redirects** library only removes the standard `authorization`, `proxy-authorization` and `cookie` headers. Any other authentication header (e.g., `X-API-Key`, `Token`) \u2013 and even a retained `Proxy-Authorization` header across hosts \u2013 is left unchanged and is sent to the redirect target, allowing an attacker to capture those credentials [ A2 ][ G24 ][ G18 ].\n\n**Supporting details**\n\n* **What follow-redirects does:**  \n  The redirect logic strips headers that match the regex `/^(?:(?:proxy-)?authorization|cookie)$/i` [ A2 ]. This regex does **not** include custom authentication headers, so they are forwarded verbatim to the new domain.\n\n* **Resulting data leak:**  \n  - Custom auth headers such as `X-API-Key`, `X-Auth-Token`, `Api-Key`, etc., are sent to the cross-domain redirect target, exposing secrets to an attacker-controlled server [ A2 ][ G24 ].  \n  - The library also keeps the `Proxy-Authorization` header when the redirect moves to a different host, so proxy credentials can be leaked across hosts [ G18 ].\n\n* **Impact in axios 0.21.1:**  \n  Axios relies on **follow-redirects** for its redirect handling, so any request made with axios that follows a redirect will inherit this behavior. An attacker who can cause a redirect (e.g., by controlling the original response) can receive the victim\u2019s custom authentication header or proxy credentials, leading to credential leakage [ G4 ][ G23 ].\n\n* **Why it matters:**  \n  The leak is not limited to a specific header type; any header the application uses for authentication can be exfiltrated, making the issue broadly exploitable across many axios-based Node.js services.",
       "answer_checks": {
         "grounded": true,
         "cites": true,
         "missing_mentions": [],
         "ungrounded_ids": [],
-        "unknown_markers": []
+        "unknown_markers": [],
+        "ungrounded_versions": []
       }
     }
   ]

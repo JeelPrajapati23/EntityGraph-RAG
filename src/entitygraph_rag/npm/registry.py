@@ -87,3 +87,22 @@ def declared_dependencies(version_meta: dict) -> dict[str, dict[str, str]]:
         "optional": dict(optional),
         "peer": dict(version_meta.get("peerDependencies", {})),
     }
+
+
+def trim_releases(packument: dict) -> dict:
+    """Every version's declared dependencies and deprecation, for remediation (Phase 9).
+
+    trim_packument keeps manifests only for corpus versions. Remediation
+    also has to ask what a *newer* version of a package declares ("does
+    glob 8 still pin minimatch to ^3?"), so this keeps that slice for all
+    versions. It is fetched only for the packages remediation asks about.
+    """
+    return {
+        "name": packument["name"],
+        "versions": {
+            version: {"dependencies": {dep: spec for deps in declared_dependencies(manifest).values()
+                                       for dep, spec in deps.items()},
+                      "deprecated": manifest.get("deprecated") or None}
+            for version, manifest in packument.get("versions", {}).items()
+        },
+    }

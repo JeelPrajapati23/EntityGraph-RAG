@@ -1,10 +1,10 @@
 {
   "summary": {
-    "questions": 20,
-    "route_accuracy": 0.95,
-    "pattern_accuracy": 0.95,
-    "checks_passed": 19,
-    "fully_correct": 18,
+    "questions": 24,
+    "route_accuracy": 0.9583333333333334,
+    "pattern_accuracy": 0.9166666666666666,
+    "checks_passed": 23,
+    "fully_correct": 21,
     "variant": "minilm_windowed"
   },
   "questions": [
@@ -35,7 +35,7 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The question asks whether a specific package version falls within the vulnerable range of a named advisory, which is an exposure query."
+      "reasoning": "The question asks whether a specific package version is exposed to a specific advisory, which is an exposure relational query."
     },
     {
       "id": "exp-02",
@@ -65,7 +65,7 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The question asks if the specific package version is exposed to a particular advisory, which is a classic exposure relational query."
+      "reasoning": "The query asks if the specific package version is exposed to a given CVE, which is a relational exposure check."
     },
     {
       "id": "exp-03",
@@ -88,7 +88,7 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The query asks for vulnerabilities present in the dependency tree of a specific package version, which is a relational exposure question."
+      "reasoning": "The query asks for vulnerabilities present in the dependency tree of a specific package version, which is a graph\u2011based exposure question."
     },
     {
       "id": "exp-04",
@@ -111,7 +111,7 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The question asks whether a specific package version is exposed to any vulnerabilities via its dependency tree, which is a crisp graph exposure query."
+      "reasoning": "The question asks if a specific package version (mocha@8.4.0) is exposed to any vulnerabilities through its dependency tree, which is a crisp graph\u2011based exposure query."
     },
     {
       "id": "aff-01",
@@ -134,7 +134,7 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The query asks for the set of projects that a specific advisory (CVE-2022-24999) affects, which is a relational affected_projects pattern."
+      "reasoning": "The question asks for the set of projects impacted by a specific advisory, which is a relational query about affected projects."
     },
     {
       "id": "aff-02",
@@ -142,9 +142,15 @@
       "expected_route": "relational",
       "route": "relational",
       "executed_route": "relational",
-      "pattern": "affected_projects",
+      "pattern": "exposure",
       "relation": null,
       "entities": [
+        {
+          "name": "follow-redirects",
+          "node_ids": [
+            "npm:follow-redirects"
+          ]
+        },
         {
           "name": "GHSA-74fj-2j2h-c42q",
           "node_ids": [
@@ -152,12 +158,14 @@
           ]
         }
       ],
-      "warnings": [],
+      "warnings": [
+        "no named project is a corpus root; answered which projects reach the advisory through follow-redirects"
+      ],
       "route_ok": true,
-      "pattern_ok": true,
+      "pattern_ok": false,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The question asks which tracked projects depend on a vulnerable version of follow-redirects linked to a specific advisory, which is an affected_projects relational query."
+      "reasoning": "The question asks which tracked projects depend on a vulnerable version of follow-redirects identified by GHSA-74fj-2j2h-c42q, which is an exposure query."
     },
     {
       "id": "path-01",
@@ -186,7 +194,7 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The user asks for the dependency chain linking react-scripts@4.0.3 to json-schema, which is a dependency_path query."
+      "reasoning": "The query asks for the dependency chain linking react-scripts@4.0.3 to json-schema, which is a classic dependency_path graph query."
     },
     {
       "id": "path-02",
@@ -218,6 +226,123 @@
       "reasoning": "The question asks for the chain of dependencies linking a specific package version to another, which is a dependency_path relational query."
     },
     {
+      "id": "rem-01",
+      "question": "How do I fix CVE-2022-0155 in axios@0.21.1?",
+      "expected_route": "relational",
+      "route": "relational",
+      "executed_route": "relational",
+      "pattern": "remediation",
+      "relation": null,
+      "entities": [
+        {
+          "name": "axios@0.21.1",
+          "node_ids": [
+            "npm:axios@0.21.1"
+          ]
+        },
+        {
+          "name": "CVE-2022-0155",
+          "node_ids": [
+            "GHSA-74fj-2j2h-c42q"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The query asks how to remediate a specific advisory for a specific package version, which matches the remediation pattern."
+    },
+    {
+      "id": "rem-02",
+      "question": "What should mocha 8.4.0 upgrade to so it stops pulling in a vulnerable minimatch?",
+      "expected_route": "relational",
+      "route": "relational",
+      "executed_route": "relational",
+      "pattern": "remediation",
+      "relation": null,
+      "entities": [
+        {
+          "name": "mocha@8.4.0",
+          "node_ids": [
+            "npm:mocha@8.4.0"
+          ]
+        },
+        {
+          "name": "minimatch",
+          "node_ids": [
+            "npm:minimatch"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The query asks which version mocha should upgrade to in order to avoid the vulnerable minimatch, a classic remediation request for a specific package version."
+    },
+    {
+      "id": "rem-03",
+      "question": "express@4.17.1 is exposed to CVE-2024-45296. What is the smallest upgrade that fixes it?",
+      "expected_route": "relational",
+      "route": "relational",
+      "executed_route": "relational",
+      "pattern": "remediation",
+      "relation": null,
+      "entities": [
+        {
+          "name": "express@4.17.1",
+          "node_ids": [
+            "npm:express@4.17.1"
+          ]
+        },
+        {
+          "name": "CVE-2024-45296",
+          "node_ids": [
+            "GHSA-37ch-88jc-xwx2",
+            "GHSA-9wv6-86v2-598j"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The question asks for the minimal version upgrade of express@4.17.1 that resolves the specific CVE, which is a remediation query about a named project and advisory."
+    },
+    {
+      "id": "rem-04",
+      "question": "How can react-scripts 4.0.3 get rid of its dependency on the request package, which has no fixed version?",
+      "expected_route": "relational",
+      "route": "relational",
+      "executed_route": "relational",
+      "pattern": "remediation",
+      "relation": null,
+      "entities": [
+        {
+          "name": "react-scripts@4.0.3",
+          "node_ids": [
+            "npm:react-scripts@4.0.3"
+          ]
+        },
+        {
+          "name": "request",
+          "node_ids": [
+            "npm:request"
+          ]
+        }
+      ],
+      "warnings": [],
+      "route_ok": true,
+      "pattern_ok": true,
+      "checks_ok": true,
+      "failures": [],
+      "reasoning": "The user asks how to remove a vulnerable dependency (request) from a specific project version, which is a remediation query about a named project and dependency."
+    },
+    {
       "id": "nb-01",
       "question": "Which version of follow-redirects fixes CVE-2022-0155?",
       "expected_route": "relational",
@@ -244,7 +369,7 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The question asks for the version that fixes a specific advisory, which is a neighbor query for the FIXED_IN relation."
+      "reasoning": "The question asks for the version of follow-redirects that fixes a specific advisory, which is a neighbor lookup of the FIXED_IN relation."
     },
     {
       "id": "nb-02",
@@ -290,7 +415,7 @@
       "pattern_ok": false,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The question asks for the exploit conditions of a specific advisory, which requires advisory text rather than a graph fact."
+      "reasoning": "The question asks for exploit conditions of a specific advisory, which requires advisory text rather than a graph fact."
     },
     {
       "id": "nb-04",
@@ -313,7 +438,7 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The query asks for the license of a specific package version, which is a direct neighbor relationship in the graph."
+      "reasoning": "The query asks for the license of a specific package version, which is a direct neighbor relationship (LICENSED_UNDER) in the graph."
     },
     {
       "id": "sem-01",
@@ -329,7 +454,7 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The query seeks advisories based on their textual description of prototype pollution via __proto__, without referencing specific packages or versions, so it is a semantic text search."
+      "reasoning": "The query seeks advisory text describing prototype pollution via __proto__ keys, which is a semantic search over advisory prose, not a graph fact."
     },
     {
       "id": "sem-02",
@@ -361,7 +486,7 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The query asks about a class of vulnerabilities described in advisory text without referencing specific packages, versions, or advisories."
+      "reasoning": "The query asks about a class of vulnerabilities (authorization header leakage on redirects) without naming any package, version, or advisory, so it belongs to semantic routing."
     },
     {
       "id": "sem-04",
@@ -377,7 +502,7 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The question asks about general security issues of extracting untrusted tar archives, not about a specific package, version, or advisory."
+      "reasoning": "The question asks about general security issues of extracting untrusted tar archives, which is not a graph\u2011based query about specific packages, versions, or advisories."
     },
     {
       "id": "hyb-01",
@@ -400,7 +525,7 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The query asks for descriptive information about vulnerability types affecting lodash, which requires advisory text rather than a direct graph fact."
+      "reasoning": "The query asks for types of vulnerabilities associated with lodash, which requires advisory text explanation rather than a direct graph fact."
     },
     {
       "id": "hyb-02",
@@ -423,7 +548,7 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The query asks for an explanation of exploitation methods for vulnerable dependencies of a specific package, which requires advisory text rather than a direct graph fact."
+      "reasoning": "The query asks for exploitation methods of vulnerable dependencies of a specific package, which requires advisory text explanation rather than a direct graph fact."
     },
     {
       "id": "hyb-03",
@@ -446,7 +571,7 @@
       "pattern_ok": true,
       "checks_ok": true,
       "failures": [],
-      "reasoning": "The query asks for advisory text about denial of service for a named package, which fits the graph_guided_hybrid route."
+      "reasoning": "The query asks for advisory prose about denial\u2011of\u2011service for a named package, which fits the graph_guided_hybrid route."
     },
     {
       "id": "hyb-04",
@@ -471,7 +596,7 @@
       "failures": [
         "chunks not about follow-redirects: ['GHSA-p92q-9vqr-4j8v::0', 'GHSA-j5f8-grm9-p9fc::0', 'GHSA-jr5f-v2jv-69x6::0', 'GHSA-j5f8-grm9-p9fc::1']"
       ],
-      "reasoning": "The query asks for an explanatory description of a known vulnerability affecting a specific package version, which requires advisory text rather than a pure graph lookup."
+      "reasoning": "The query asks for an explanatory description of a known vulnerability affecting a specific package version, which fits the graph_guided_hybrid route."
     }
   ]
 }

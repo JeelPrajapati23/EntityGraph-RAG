@@ -30,6 +30,7 @@ from entitygraph_rag.depgraph.synthesis import synthesize_answer
 from entitygraph_rag.extraction.schema import load_schema
 from entitygraph_rag.llm_client import build_client
 from entitygraph_rag.npm.advisory_index import DEFAULT_VARIANT, VARIANTS
+from entitygraph_rag.npm.remediation import summarize
 from entitygraph_rag.retrieval import build_embedding_client
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -51,6 +52,8 @@ def result_vulnerabilities(result: dict) -> set[str]:
     found = {row.get("vulnerability_id") for row in result.get("results", [])}
     found |= {row.get("node_id") for row in result.get("results", [])}
     found |= {a["vulnerability_id"] for a in result.get("advisories", []) if isinstance(a, dict)}
+    found |= {a["vulnerability_id"] for row in result.get("results", []) for a in row.get("advisories", [])
+              if isinstance(a, dict)}  # remediation rows
     return {f for f in found if f}
 
 
@@ -78,6 +81,24 @@ def check(expect: dict, result: dict, chunks_by_id: dict) -> list[str]:
         top = chunks[0] if chunks else None
         if top is None or not re.search(pattern, f"{top.get('summary', '')}\n{top['text']}", re.IGNORECASE):
             failures.append(f"top chunk doesn't match /{pattern}/: {top['chunk_id'] if top else 'no chunks'}")
+    if want := expect.get("remediation"):
+        failures.extend(remediation_failures(want, result))
+    return failures
+
+
+def remediation_failures(want: dict, result: dict) -> list[str]:
+    plans = [r["plan"] for r in result.get("results", []) if r.get("version_id") == want["version_id"] and "plan" in r]
+    if not plans:
+        return [f"no remediation plan for {want['version_id']}"]
+    plan, failures = plans[0], []
+    if plan["status"] != want["status"]:
+        failures.append(f"status {plan['status']}, expected {want['status']}")
+    if "target_version" in want and plan.get("target_version") != want["target_version"]:
+        failures.append(f"target {plan.get('target_version')}, expected {want['target_version']}")
+    roots = {name: u["version"] for name, u in summarize(plan)["root"].items()} if plan["status"] in ("blocked", "no_fix") else {}
+    for name, version in want.get("root", {}).items():
+        if roots.get(name) != version:
+            failures.append(f"project upgrade {name} -> {roots.get(name)}, expected {version}")
     return failures
 
 
@@ -97,6 +118,10 @@ def expected_mentions(expect: dict, ctx) -> list[list[str]]:
     if path := expect.get("path"):
         mentions.append(display_names(path[-1]))
     mentions.extend(display_names(n) for n in expect.get("nodes_include", []))
+    if want := expect.get("remediation"):
+        if "target_version" in want:
+            mentions.append([want["target_version"]])
+        mentions.extend([version] for version in want.get("root", {}).values())
     return mentions
 
 
@@ -105,9 +130,10 @@ def answer_checks(answer: dict, expect: dict, ctx) -> dict:
     missing = [spellings[0] for spellings in expected_mentions(expect, ctx)
                if not any(s.lower() in text for s in spellings)]
     checks = answer["checks"]
-    return {"grounded": not checks["ungrounded_ids"] and not checks["unknown_markers"],
+    return {"grounded": not checks["ungrounded_ids"] and not checks["unknown_markers"] and not checks["ungrounded_versions"],
             "cites": bool(checks["cited_markers"]), "missing_mentions": missing,
-            "ungrounded_ids": checks["ungrounded_ids"], "unknown_markers": checks["unknown_markers"]}
+            "ungrounded_ids": checks["ungrounded_ids"], "unknown_markers": checks["unknown_markers"],
+            "ungrounded_versions": checks["ungrounded_versions"]}
 
 
 def main() -> None:
@@ -156,6 +182,7 @@ def main() -> None:
             print(f"    answer: grounded={ac['grounded']} cites={ac['cites']}"
                   + (f" missing={ac['missing_mentions']}" if ac["missing_mentions"] else "")
                   + (f" ungrounded={ac['ungrounded_ids']} unknown_markers={ac['unknown_markers']}"
+                     f" ungrounded_versions={ac['ungrounded_versions']}"
                      if not ac["grounded"] else ""), flush=True)
 
     n = len(rows)

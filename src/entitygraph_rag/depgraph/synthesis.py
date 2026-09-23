@@ -13,7 +13,9 @@ Three things are kept apart, as in the finance synthesis:
 
 After generation, the answer is checked: citation markers must point at
 evidence that exists, and every CVE / GHSA / MAL id in the answer must
-appear in the evidence. An id that doesn't is flagged as ungrounded.
+appear in the evidence. An id that doesn't is flagged as ungrounded. So is
+a "name@version" the evidence never pairs (a remediation answer's main
+risk is a plausible but invented version).
 """
 
 import re
@@ -23,19 +25,31 @@ from groq import Groq
 from ..llm_client import DEFAULT_MODEL, generate_text
 
 MAX_GRAPH_FACTS = 40
+MAX_REMEDIATION_FACTS = 12  # each is a whole plan; keeps a project-wide question within Groq's 8K tokens/minute
 SNIPPET_CHARS = 300
 SEVERITY_ORDER = {"CRITICAL": 0, "HIGH": 1, "MODERATE": 2, "LOW": 3}
 # The model sometimes writes ids with Unicode hyphens (U+2010-2012, e.g. a
 # non-breaking hyphen inside "GHSA-33f9-...") and citations in full-width
 # brackets (U+3010/3011), and slips zero-width spaces into markers. These break
 # copy-paste, search, and the checks below, so they are normalized to "-" and
-# "[ ]" and the zero-width spaces dropped. Dashes are left alone.
-ANSWER_NORMALIZATION = str.maketrans({"\u2010": "-", "\u2011": "-", "\u2012": "-", "\u3010": "[", "\u3011": "]", "\u200b": None})
+# "[ ]" and the zero-width spaces dropped. Narrow and non-breaking spaces
+# (U+202F, U+00A0, e.g. "express\u202f@\u202f4.22.0") become plain spaces. Dashes
+# are left alone.
+ANSWER_NORMALIZATION = str.maketrans({"\u2010": "-", "\u2011": "-", "\u2012": "-", "\u3010": "[", "\u3011": "]",
+                                      "\u200b": None, "\u202f": " ", "\u00a0": " "})
 ADVISORY_ID_RE = re.compile(r"\b(CVE-\d{4}-\d{4,}|GHSA(?:-[0-9a-z]{4}){3}|MAL-\d{4}-\d+)\b", re.IGNORECASE)
 # "jws @3.2.2" / "jws @ 3.2.2" -> "jws@3.2.2": the model sometimes spaces out package@version.
 SPACED_VERSION_RE = re.compile(r"(?<=[\w.-]) ?@ ?(?=\d)")
 MARKER_GROUP_RE = re.compile(r"\[([^\]]+)\]")
 MARKER_RE = re.compile(r"\b([GA]\d+)\b")
+PACKAGE_VERSION_RE = re.compile(r"(?<![\w/@.-])((?:@[\w.-]+/)?[\w.-]+)@(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]*[0-9A-Za-z])?)")
+REMEDIATION_STATUS = {
+    "in_range": "fixable by a lockfile refresh",
+    "split": "fixable by a lockfile refresh (separate copies)",
+    "upgrade_root": "the project itself must be upgraded",
+    "blocked": "a dependent's declared range excludes every fixed version",
+    "no_fix": "no fixed version exists",
+}
 
 SYSTEM_PROMPT = """You answer questions about npm dependency trees and security \
 advisories using ONLY the evidence given: graph facts [G#], exact totals, and \
@@ -49,6 +63,10 @@ the evidence. Never mention an id that is not in the evidence.
 be a capped subset.
 - If the evidence lists no vulnerability for something, say none is known in \
 this dataset, not that it is safe.
+- When a graph fact gives a remediation plan, give its steps with exactly \
+the versions, ranges and overrides it states. Never suggest a version the \
+evidence doesn't give. A fixed version is fixed only for the advisories in \
+this dataset.
 - If the evidence doesn't answer the question, say so plainly.
 - Be concise: a short direct answer first, then the supporting details. List \
 at most 10 advisories or paths (the most severe first) and summarize the rest \
@@ -150,12 +168,40 @@ def _hybrid_facts(result: dict) -> tuple[list[str], list[str], list[dict], list[
     return facts[:MAX_GRAPH_FACTS], totals, ranked, []
 
 
+def _remediation_facts(result: dict) -> tuple[list[str], list[str], list[dict], list[str]]:
+    facts, chains, advisories = [], [], {}
+    for row in result.get("results", []):
+        plan = row["plan"]
+        tags = " ".join(vuln_tag(a) for a in row["advisories"])
+        chains.append(f"{chain(row['path'])} {tags}")
+        lowest = (f" Lowest version outside every targeted advisory's range: {plan['package']}@{plan['lowest_safe_version']}."
+                  if plan.get("lowest_safe_version") else "")
+        facts.append(f"In {short(row['project'])}: {chains[-1]}. Status: {REMEDIATION_STATUS[plan['status']]}.{lowest} "
+                     f"Plan: {' '.join(row['actions'])}")
+        advisories.update({a["vulnerability_id"]: a for a in row["advisories"]})
+
+    totals = []
+    t = result.get("totals")
+    if t:
+        by_status = ", ".join(f"{n} {REMEDIATION_STATUS[s]}" for s, n in t["by_status"].items())
+        totals.append(f"{t['copies']} vulnerable dependency copies planned across "
+                      f"{', '.join(short(p) for p in t['projects'])}: {by_status}.")
+        totals.append(f"{t['fully_resolved']} of {t['copies']} can be fixed without an npm override.")
+    else:
+        totals.append("No vulnerable dependency matched the question, so there is nothing to remediate in this dataset.")
+    shown = min(len(facts), MAX_REMEDIATION_FACTS)
+    if result.get("total_results", 0) > shown:
+        totals.append(f"Plans below cover the {shown} most severe of {result['total_results']} copies.")
+    kept = {a["vulnerability_id"] for row in result.get("results", [])[:shown] for a in row["advisories"]}
+    return facts[:shown], totals, [a for a in advisories.values() if a["vulnerability_id"] in kept], chains
+
+
 def build_evidence(result: dict) -> dict:
     """Everything synthesis shows the model and returns as citations, from a router result."""
     route = result["executed_route"]
     if route == "relational":
         builder = {"exposure": _exposure_facts, "affected_projects": _exposure_facts,
-                   "dependency_path": _path_facts}.get(result.get("executed_pattern") or result.get("pattern"), _neighbor_facts)
+                   "dependency_path": _path_facts, "remediation": _remediation_facts}.get(result.get("executed_pattern") or result.get("pattern"), _neighbor_facts)
         facts, totals, advisories, chains = builder(result)
     elif route == "graph_guided_hybrid":
         facts, totals, advisories, chains = _hybrid_facts(result)
@@ -188,14 +234,25 @@ def grounded_ids(evidence: dict) -> set[str]:
     return {i.upper() for i in ids}
 
 
+def ungrounded_versions(answer: str, evidence: dict) -> list[str]:
+    """"name@version" mentions whose name and version never appear together in one evidence line."""
+    lines = [*evidence["facts"], *evidence["totals"], *evidence["chains"], *(c["text"] for c in evidence["chunks"])]
+    flagged = set()
+    for name, version in PACKAGE_VERSION_RE.findall(answer):
+        if not any(name in line and version in line for line in lines):
+            flagged.add(f"{name}@{version}")
+    return sorted(flagged)
+
+
 def check_answer(answer: str, evidence: dict) -> dict:
-    """Citation markers that point at nothing, and advisory ids not in the evidence."""
+    """Citation markers that point at nothing, and advisory ids or package versions not in the evidence."""
     valid = {f"G{i}" for i in range(1, len(evidence["facts"]) + 1)} | {f"A{i}" for i in range(1, len(evidence["chunks"]) + 1)}
     markers = {m for group in MARKER_GROUP_RE.findall(answer) for m in MARKER_RE.findall(group)}
     mentioned = {m.upper() for m in ADVISORY_ID_RE.findall(answer)}
     return {
         "unknown_markers": sorted(markers - valid),
         "ungrounded_ids": sorted(mentioned - grounded_ids(evidence)),
+        "ungrounded_versions": ungrounded_versions(answer, evidence),
         "cited_markers": sorted(markers & valid),
     }
 

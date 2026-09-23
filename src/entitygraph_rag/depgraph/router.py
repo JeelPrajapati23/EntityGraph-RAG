@@ -18,6 +18,7 @@ from ..graph import NetworkXGraphStore
 from ..llm_client import DEFAULT_MODEL, generate_json
 from ..npm.advisory_index import DEFAULT_VARIANT, index_path
 from ..npm.lookup import NodeLookup
+from ..npm.releases import Releases
 from ..retrieval import VectorIndex
 from .classify import build_classification_prompt, build_decision_model
 from .dispatch import DepGraphContext, resolve, run_graph_guided_hybrid, run_relational, semantic_chunks
@@ -76,7 +77,7 @@ def route_query(query: str, *, client: Groq, ctx: DepGraphContext, schema: Schem
 
 
 def load_context(depgraph_dir: Path, embedding_client: InferenceClient, variant: str = DEFAULT_VARIANT) -> DepGraphContext:
-    """Everything the router needs, from the Phase 2-6 build outputs."""
+    """Everything the router needs, from the Phase 2-6 build outputs, plus Phase 9's releases.json if built."""
     def read_jsonl(name):
         return [json.loads(line) for line in (depgraph_dir / name).read_text(encoding="utf-8").splitlines() if line]
 
@@ -87,4 +88,5 @@ def load_context(depgraph_dir: Path, embedding_client: InferenceClient, variant:
         chunks_by_id={c["chunk_id"]: c for c in read_jsonl("advisory_chunks.jsonl")},
         embedding_client=embedding_client,
         variant=variant,
+        releases=Releases.from_file(depgraph_dir / "releases.json") if (depgraph_dir / "releases.json").exists() else None,
     )

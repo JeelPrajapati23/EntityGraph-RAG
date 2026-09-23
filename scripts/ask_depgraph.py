@@ -1,4 +1,4 @@
-"""Ask DepGraph a question: route it, retrieve, and synthesize a cited answer (Phases 7-8).
+"""Ask DepGraph a question: route it, retrieve, and synthesize a cited answer (Phases 7-9).
 
 Prints the answer, then the evidence behind it: dependency chains, the
 advisories with their osv.dev links, and the advisory text that was used.
@@ -7,6 +7,7 @@ marker pointing at nothing, is flagged. --json prints everything.
 
 Usage:
     uv run python scripts/ask_depgraph.py "Is axios@0.21.1 exposed to CVE-2022-0155?" [--json]
+    uv run python scripts/ask_depgraph.py "How do I fix CVE-2022-0155 in axios@0.21.1?"
 """
 
 import argparse
@@ -48,8 +49,9 @@ def main() -> None:
     for w in answer["warnings"]:
         print(f"! {w}")
     checks = answer["checks"]
-    if checks["ungrounded_ids"] or checks["unknown_markers"]:
-        print(f"! ungrounded ids: {checks['ungrounded_ids']}  unknown markers: {checks['unknown_markers']}")
+    if checks["ungrounded_ids"] or checks["unknown_markers"] or checks["ungrounded_versions"]:
+        print(f"! ungrounded ids: {checks['ungrounded_ids']}  unknown markers: {checks['unknown_markers']}"
+              f"  ungrounded versions: {checks['ungrounded_versions']}")
     cites = answer["citations"]
     if cites["dependency_chains"]:
         print(f"\nDependency chains ({len(cites['dependency_chains'])}):")

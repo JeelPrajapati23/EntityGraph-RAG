@@ -14,6 +14,7 @@ from entitygraph_rag.extraction.schema import load_schema
 from entitygraph_rag.graph import NetworkXGraphStore
 from entitygraph_rag.npm.graph_load import to_entity
 from entitygraph_rag.npm.lookup import NodeLookup
+from entitygraph_rag.npm.releases import Releases
 from entitygraph_rag.retrieval import VectorIndex
 
 SCHEMA = load_schema(Path(__file__).resolve().parent.parent / "schema" / "v2.yaml")
@@ -41,11 +42,14 @@ def build_store():
         return {"subject_id": s, "relation": rel, "object_id": o, "properties": props, "source_doc_id": "t"}
 
     edges = [edge(f"npm:{v}", "VERSION_OF", f"npm:{v.split('@')[0]}") for v in VERSIONS]
-    edges += [edge("npm:app@1.0.0", "DEPENDS_ON", "npm:mid@1.0.0", lockfile_doc_ids=["lockfile:npm:app@1.0.0"]),
-              edge("npm:mid@1.0.0", "DEPENDS_ON", "npm:lib@1.0.0", lockfile_doc_ids=["lockfile:npm:app@1.0.0"]),
+    edges += [edge("npm:app@1.0.0", "DEPENDS_ON", "npm:mid@1.0.0", lockfile_doc_ids=["lockfile:npm:app@1.0.0"],
+                   dep_name="mid", version_range="^1.0.0"),
+              edge("npm:mid@1.0.0", "DEPENDS_ON", "npm:lib@1.0.0", lockfile_doc_ids=["lockfile:npm:app@1.0.0"],
+                   dep_name="lib", version_range="~1.0.0"),
               edge("npm:other@2.0.0", "DEPENDS_ON", "npm:lib@1.0.1", lockfile_doc_ids=["lockfile:npm:other@2.0.0"]),
               edge("npm:lib@1.0.0", "HAS_VULNERABILITY", "GHSA-lib", lockfile_doc_ids=["lockfile:npm:app@1.0.0"]),
-              edge("GHSA-lib", "AFFECTS_VERSION_RANGE", "npm:lib"),
+              edge("GHSA-lib", "AFFECTS_VERSION_RANGE", "npm:lib",
+                   ranges=[{"type": "SEMVER", "events": [{"introduced": "0"}, {"fixed": "1.0.1"}]}], versions=[]),
               edge("GHSA-lib", "FIXED_IN", "npm:lib@1.0.1")]
     store = NetworkXGraphStore()
     store.load([to_entity(n) for n in nodes], edges)
@@ -160,3 +164,34 @@ def test_exposure_from_a_named_root_is_unchanged(ctx, monkeypatch):
     classify_as(monkeypatch, route="relational", pattern="exposure", entities=["app", "CVE-2020-1"])
     result = ask(ctx)
     assert [r["project"] for r in result["results"]] == ["npm:app@1.0.0"] and not result["warnings"]
+
+
+LIB_RELEASES = {"lib": {"versions": ["1.0.0", "1.0.1", "2.0.0"], "complete": True,
+                        "manifests": {v: {"dependencies": {}, "deprecated": None} for v in ("1.0.0", "1.0.1", "2.0.0")}}}
+
+
+def test_remediation_plans_each_vulnerable_copy_in_the_project(ctx, monkeypatch):
+    ctx.releases = Releases(LIB_RELEASES)
+    classify_as(monkeypatch, route="relational", pattern="remediation", entities=["app@1.0.0", "CVE-2020-1"])
+    result = ask(ctx)
+
+    [row] = result["results"]
+    assert row["version_id"] == "npm:lib@1.0.0" and row["path"] == ["npm:app@1.0.0", "npm:mid@1.0.0", "npm:lib@1.0.0"]
+    # mid declares lib "~1.0.0", so 1.0.1 fits and 2.0.0 isn't needed.
+    assert row["plan"]["status"] == "in_range" and row["plan"]["target_version"] == "1.0.1" and row["resolved"]
+    assert "npm update lib" in row["actions"][0]
+    assert result["totals"] == {"copies": 1, "by_status": {"in_range": 1}, "fully_resolved": 1,
+                                "projects": ["npm:app@1.0.0"]}
+
+
+def test_remediation_of_a_named_dependency_finds_its_lockfiles(ctx, monkeypatch):
+    ctx.releases = Releases(LIB_RELEASES)
+    classify_as(monkeypatch, route="relational", pattern="remediation", entities=["lib"])
+    [row] = ask(ctx)["results"]  # lib@1.0.1 in other@2.0.0's lockfile is clean
+    assert (row["project"], row["version_id"]) == ("npm:app@1.0.0", "npm:lib@1.0.0")
+
+
+def test_remediation_without_release_metadata_warns(ctx, monkeypatch):
+    classify_as(monkeypatch, route="relational", pattern="remediation", entities=["app@1.0.0"])
+    result = ask(ctx)
+    assert result["results"] == [] and any("build_remediation" in w for w in result["warnings"])

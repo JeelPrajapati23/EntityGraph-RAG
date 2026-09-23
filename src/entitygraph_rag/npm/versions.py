@@ -66,3 +66,13 @@ def fixed_versions(affected_entry: dict) -> list[str]:
     fixed = {e["fixed"] for r in affected_entry.get("ranges", []) if r.get("type") == "SEMVER"
              for e in r["events"] if "fixed" in e}
     return sorted(fixed, key=cmp_to_key(compare))
+
+
+def is_stable(version: str) -> bool:
+    """A valid semver release without a prerelease tag. Old registry entries include non-semver strings."""
+    parsed = nodesemver.parse(version, False)
+    return parsed is not None and not parsed.prerelease
+
+
+def sort_versions(versions) -> list[str]:
+    return sorted(versions, key=cmp_to_key(compare))

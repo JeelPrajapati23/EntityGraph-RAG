@@ -75,7 +75,7 @@ def test_synthesize_normalizes_unicode_hyphens_and_fullwidth_brackets(monkeypatc
     out = synthesize_answer(exposure_result([exposure_row("npm:follow-redirects@1.13.1", 1)]), client=None)
 
     assert out["answer"] == "Yes: GHSA-74fj-2j2h-c42q [G1] – high."  # the en dash is left alone
-    assert out["checks"] == {"unknown_markers": [], "ungrounded_ids": [], "cited_markers": ["G1"]}
+    assert out["checks"] == {"unknown_markers": [], "ungrounded_ids": [], "ungrounded_versions": [], "cited_markers": ["G1"]}
     assert out["citations"]["advisories"][0]["url"] == ADVISORY["source_url"]
 
 
@@ -96,3 +96,37 @@ def test_spaced_package_versions_are_rejoined(monkeypatch):
     monkeypatch.setattr(synthesis_module, "generate_text", lambda *a, **k: "jws @3.2.2 and semver @ 5.6.0 are affected; email me @ noon [" + chr(0x200B) + "G1]")
     out = synthesize_answer(exposure_result([exposure_row("npm:follow-redirects@1.13.1", 1)]), client=None)
     assert out["answer"] == "jws@3.2.2 and semver@5.6.0 are affected; email me @ noon [G1]"
+
+
+def remediation_result():
+    plan = {"status": "blocked", "package": "minimatch", "lowest_safe_version": "3.0.5", "target_version": "3.0.5"}
+    row = {"project": "npm:mocha@8.4.0", "lockfile_doc_id": "lockfile:npm:mocha@8.4.0", "version_id": "npm:minimatch@3.0.4",
+           "path": ["npm:mocha@8.4.0", "npm:minimatch@3.0.4"], "depth": 1, "advisories": [ADVISORY], "plan": plan,
+           "actions": ['mocha@8.4.0 declares minimatch "3.0.4".', "Upgrade the project: mocha 8.4.0 -> 10.6.0."],
+           "resolved": True}
+    return {"query": "q", "route": "relational", "executed_route": "relational", "pattern": "remediation",
+            "executed_pattern": "remediation", "results": [row], "total_results": 1, "warnings": [],
+            "totals": {"copies": 1, "by_status": {"blocked": 1}, "fully_resolved": 1, "projects": ["npm:mocha@8.4.0"]}}
+
+
+def test_remediation_facts_carry_the_plan_and_router_totals():
+    evidence = build_evidence(remediation_result())
+
+    [fact] = evidence["facts"]
+    assert fact.startswith("In mocha@8.4.0: mocha@8.4.0 → depends_on → minimatch@3.0.4 [VULNERABLE: GHSA-74fj-2j2h-c42q")
+    assert "excludes every fixed version" in fact and "minimatch@3.0.5" in fact and "mocha 8.4.0 -> 10.6.0" in fact
+    assert evidence["totals"][0].startswith("1 vulnerable dependency copies planned across mocha@8.4.0")
+    assert [a["vulnerability_id"] for a in evidence["advisories"]] == ["GHSA-74fj-2j2h-c42q"]
+
+
+def test_check_answer_flags_versions_the_evidence_never_gives():
+    evidence = build_evidence(remediation_result())
+    checks = check_answer("Upgrade to mocha@10.6.0 [G1]; minimatch@3.0.5 is fixed, not minimatch@3.1.2.", evidence)
+    assert checks["ungrounded_versions"] == ["minimatch@3.1.2"]
+    assert check_answer("Scoped names work: @babel/core@7.0.0 [G1].", evidence)["ungrounded_versions"] == ["@babel/core@7.0.0"]
+
+
+def test_synthesize_joins_versions_spaced_with_narrow_no_break_spaces(monkeypatch):
+    monkeypatch.setattr(synthesis_module, "generate_text", lambda *a, **k: "Upgrade express\u202f@\u202f4.22.0 [G1].")
+    out = synthesize_answer(remediation_result(), client=None)
+    assert out["answer"] == "Upgrade express@4.22.0 [G1]."

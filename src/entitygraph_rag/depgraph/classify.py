@@ -14,7 +14,7 @@ from pydantic import BaseModel, create_model
 from ..extraction.schema import Schema
 
 ROUTES = ("semantic", "relational", "graph_guided_hybrid")
-PATTERNS = ("exposure", "affected_projects", "dependency_path", "neighbors")
+PATTERNS = ("exposure", "affected_projects", "dependency_path", "remediation", "neighbors")
 
 
 def build_decision_model(schema: Schema) -> type[BaseModel]:
@@ -49,6 +49,10 @@ CVE-2024-45296?", "what vulnerabilities are in axios@0.21.1's tree?").
 ("which projects are affected by CVE-2022-0155?").
   - dependency_path: how one named package reaches another through \
 dependencies ("how does react-scripts depend on json-schema?").
+  - remediation: how to fix or get rid of vulnerable dependencies of a \
+named project, optionally a named advisory or dependency ("how do I fix \
+CVE-2022-0155 in axios@0.21.1?", "what should mocha 8.4.0 upgrade to drop \
+its vulnerable minimatch?").
   - neighbors: one direct relation of a named node; set `relation` too \
 ("what version fixes GHSA-...?" -> FIXED_IN, "who maintains qs?" -> \
 MAINTAINED_BY, "when is CVE-X exploitable?" -> EXPLOITABLE_WHEN).
@@ -62,8 +66,8 @@ Relation vocabulary (only these values for `relation`):
 
 entities: every package, version or advisory id named in the question, \
 copied as written: keep "name@version" together and keep CVE/GHSA ids \
-whole. For dependency_path, list the project first and the dependency \
-second. Empty list if none.
+whole. For dependency_path and remediation, list the project first and \
+the dependency second. Empty list if none.
 reasoning: one sentence.
 
 Return only a JSON object with keys "route", "entities", "pattern" (one of \

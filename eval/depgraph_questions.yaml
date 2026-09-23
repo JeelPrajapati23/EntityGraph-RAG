@@ -12,6 +12,11 @@
 #   nodes_include: node ids that must appear as results (neighbors, affected projects)
 #   chunks_affect_package: every returned advisory chunk must affect this package
 #   top_chunk_matches: regex the top chunk's advisory summary or text must match
+#   remediation: a plan for `version_id` must exist with this `status`, and
+#     optionally this `target_version` and these project (`root`) upgrades.
+#     Expected plans are read off scripts/build_remediation.py's output; the
+#     versions depend on the registry as fetched, so re-check them after a
+#     --refresh of the release metadata.
 #
 # Don't tune the classifier prompt against this set: it's small, and the
 # finance router's history (CLAUDE.md) shows prompt edits trading one
@@ -75,6 +80,33 @@ questions:
     pattern: dependency_path
     expect:
       nodes_include: ["npm:ansi-regex@5.0.0", "npm:ansi-regex@3.0.0"]
+
+  # relational / remediation (Phase 9)
+  - id: rem-01
+    question: "How do I fix CVE-2022-0155 in axios@0.21.1?"
+    route: relational
+    pattern: remediation
+    expect:
+      vulnerabilities_include: [GHSA-74fj-2j2h-c42q]
+      remediation: {version_id: "npm:follow-redirects@1.13.1", status: in_range, target_version: "1.16.0"}
+  - id: rem-02
+    question: "What should mocha 8.4.0 upgrade to so it stops pulling in a vulnerable minimatch?"
+    route: relational
+    pattern: remediation
+    expect:
+      remediation: {version_id: "npm:minimatch@3.0.4", status: blocked, root: {mocha: "10.6.0"}}
+  - id: rem-03
+    question: "express@4.17.1 is exposed to CVE-2024-45296. What is the smallest upgrade that fixes it?"
+    route: relational
+    pattern: remediation
+    expect:
+      remediation: {version_id: "npm:path-to-regexp@0.1.7", status: blocked, root: {express: "4.22.0"}}
+  - id: rem-04
+    question: "How can react-scripts 4.0.3 get rid of its dependency on the request package, which has no fixed version?"
+    route: relational
+    pattern: remediation
+    expect:
+      remediation: {version_id: "npm:request@2.88.2", status: no_fix}
 
   # relational / neighbors
   - id: nb-01

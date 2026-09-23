@@ -502,6 +502,121 @@ the miss.
   runs even at temperature 0 (aff-02 came back as `exposure` in two of
   three runs).
 
+## Remediation (Phase 9)
+
+`npm/remediation.py` plans the smallest upgrade that removes one
+vulnerable copy from one lockfile. `scripts/build_remediation.py` plans
+every (lockfile, vulnerable version) pair. The router's `remediation`
+pattern plans the copies a question points at, at query time.
+
+**What "fixed" means.** Candidates are published stable versions newer
+than the installed one and outside every *target* advisory's OSV ranges.
+The targets are the advisories on the copy (or the ones the question
+names) plus every advisory on the package that shares a CVE with one of
+them. So an advisory and its incomplete-fix follow-up are fixed together,
+and the highest fix wins. Candidates clear of *every* known advisory on
+the package come first, then non-deprecated ones, then the lowest.
+Because of this ranking, 15 of 479 plans target a version above the
+lowest fixed one. Example: lodash 4.18.0 fixes the targets but loses to
+4.18.1.
+
+**Statuses** (per copy, against the declared ranges of its dependents in
+that lockfile):
+
+| status | meaning | count |
+|---|---|---|
+| `in_range` | one fixed version satisfies every dependent's range: `npm update <name>` | 274 |
+| `blocked` | some dependent's range excludes every fixed version | 179 |
+| `no_fix` | no published version is outside the advisory ranges | 18 |
+| `upgrade_root` | the vulnerable copy is the project itself | 8 |
+| `split` | every range admits a fixed version, but no single one fits all | 0 |
+
+**Blocked dependents are upgraded, repeating toward the root.** For each
+blocker, the planner takes the lowest newer release whose declared range
+admits a fixed version, or that no longer declares the dependency. It
+then checks that release against the blocker's own dependents, and
+repeats. Releases admitting one of the child's best-ranked fixed versions
+come first, so the ranking above carries up the chain: for CVE-2024-45296
+the planner picks express 4.22.0 (`path-to-regexp ~0.1.12`, admits
+0.1.13, clear of every known advisory) over 4.20.0 (`0.1.10`, still hit by
+GHSA-rhx6-c78j-4q9w). 161 of 179 blocked plans end with an upgrade path
+for every blocker. 125 of those need a project-root upgrade, e.g. mocha
+8.4.0 pins `minimatch` to exactly `3.0.4`, and mocha 10.6.0 is the first
+release declaring a fixed range (`^5.1.6`). An npm `overrides` entry is
+always given as the fallback, flagged as forcing a version outside a
+declared range.
+
+**No fix is not a dead end.** 17 of 18 `no_fix` copies (`request`,
+`ip@1.x`, `elliptic`, `parseuri`, `html-minifier`, `extract-zip`) can be
+removed by upgrading their dependents to releases that drop them. For
+example, jsdom 16.6.0 is the first release without `request`, and it fits
+`jest-environment-jsdom`'s `^16.4.0`. The one left over is `request@2.88.2`
+in its own lockfile, where there is nothing above it.
+
+**Release metadata.** Asking what a *newer* parent release declares needs
+manifests the trimmed packuments don't keep (they have manifests only for
+corpus versions). `scripts/fetch_release_metadata.py` plans everything,
+fetches the packages the plans found missing, and repeats until nothing is
+missing. The first run took 6 rounds (260 → 20 → 10 → 8 → 1 → 0) and
+fetched 322 packages (`data/raw/npm/releases/`, 15 MB).
+`build_remediation.py` then writes the 328 packages the plans read to
+`data/processed/depgraph/releases.json` (16 MB), which the router loads.
+
+**Gotchas:**
+- **"Safe" means safe against the advisories in this dataset.** OSV was
+  queried for corpus versions (Phase 1), so an advisory that affects only
+  releases newer than anything in a tree is missing. A fix target can be
+  vulnerable to it.
+- **The registry isn't pinned here.** Trees are resolved `--before` a date,
+  but remediation reads the registry as fetched, because a fix is for
+  today. Plan versions (and `eval/depgraph_questions.yaml`'s `remediation`
+  expectations) can change after `fetch_release_metadata.py --refresh`.
+- **It is greedy, not a solver.** Each blocker's chain is planned on its
+  own, and versions are merged per package (highest wins). Intermediate
+  upgrades are shown as minimums ("html-webpack-plugin 3.2.0 -> >= 4.1.0"),
+  because the upgraded root may require more (@vue/cli-service 5.0.1
+  declares `^5.1.0`).
+- **Monorepos pin each other exactly, with cycles.** jest 26's packages
+  declare `^26.6.3` / `26.6.3` on each other, and jest-runner → jest-config
+  → @jest/test-sequencer → jest-runner is a cycle. Fixing `braces` in
+  jest@26.6.3 walks ~15 packages up to jest 27. The depth limit is 25, and
+  sub-plans are memoized per (dependent, dependency, child candidates). A
+  blocker that is already being upgraded lower in the same chain is
+  assumed to move with it and listed as "unchecked". 15 of the 178
+  resolved blocked/no-fix plans rely on such an assumption.
+- **The planner's text output is flattened.** The raw plan is a tree, one
+  branch per blocker, and jest's is hundreds of lines. `actions()` merges it
+  into: project upgrades, lockfile refreshes, upgrades that come along,
+  unchecked or unresolved blockers, and the override. Lists are capped
+  (`MAX_LISTED`). Synthesis also shows at most 12 plans
+  (`MAX_REMEDIATION_FACTS`). A project-wide question over react-scripts
+  otherwise built a 15K-token prompt, above Groq's free-tier 8K
+  tokens/minute.
+- **A dependency that is also a corpus root must be named second.** In
+  "how can react-scripts drop request?", `request@2.88.2` is itself a root.
+  The first named root is the project, and later names narrow which
+  dependencies to fix.
+
+**Grounding check for versions.** A remediation answer's main risk is a
+plausible but invented version. Answers are now also checked for
+`name@version` mentions whose name and version never appear together in
+one evidence line (`ungrounded_versions`). The eval counts these as
+ungrounded.
+
+**Eval (24 questions; 4 new `rem-*`):**
+- Router (`eval/results/depgraph_router.json`): 21/24 fully correct.
+  nb-03 and hyb-04 were already misses in Phase 8. aff-02 came back as
+  `exposure` once, and dispatch still answered it as `affected_projects`.
+  Rerun alone it was `affected_projects` 3 of 3 times, with both the old
+  and the new prompt. All 4 remediation questions route and plan
+  correctly.
+- Answers (`eval/results/depgraph_answers.json`, a separate run): 23/24
+  routed fully correct, 23/24 grounded, 24/24 cite evidence. The
+  ungrounded one is sem-04 (semantic route), which named
+  GHSA-5qq5-rm4j-mr97, an advisory that isn't in the dataset. No answer
+  had an ungrounded version. All 4 remediation answers are grounded and
+  name the expected fix.
+
 ## Schema
 
 See [`schema/v2.yaml`](../schema/v2.yaml). Key decisions:

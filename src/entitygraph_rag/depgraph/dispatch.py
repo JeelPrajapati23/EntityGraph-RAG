@@ -22,10 +22,13 @@ from ..graph.exposure import dependency_paths, exposed_lockfiles, exposure
 from ..npm.advisory_index import DEFAULT_VARIANT, embed_query
 from ..npm.graph_load import LOCKFILE_DOC_PREFIX, root_of_lockfile
 from ..npm.lookup import NodeLookup
+from ..npm.releases import Releases
+from ..npm.remediation import actions, is_resolved, plan_fix
 from ..retrieval import VectorIndex
 from ..retrieval.windows import search_chunks
 
 MAX_ROWS = 200  # cap on result rows per query; totals are computed before the cap
+MAX_PLANS = 40  # remediation rows carry whole plans, so they are capped lower
 SEVERITY_ORDER = {"CRITICAL": 0, "HIGH": 1, "MODERATE": 2, "LOW": 3}
 
 
@@ -37,6 +40,7 @@ class DepGraphContext:
     chunks_by_id: dict[str, dict]
     embedding_client: InferenceClient | None
     variant: str = DEFAULT_VARIANT
+    releases: Releases | None = None  # remediation's release metadata (scripts/build_remediation.py)
     chunks_by_advisory: dict[str, list[str]] = field(init=False)
 
     def __post_init__(self) -> None:
@@ -197,6 +201,81 @@ def run_dependency_path(ctx: DepGraphContext, resolved) -> dict:
     return {"pattern": "dependency_path", "results": rows[:MAX_ROWS], "total_results": len(rows)}
 
 
+def remediation_scope(ctx: DepGraphContext, resolved) -> tuple[list[str], set[str], set[str], set[str]]:
+    """(projects, advisories, dependency package names, dependency version ids) for a remediation question.
+
+    The first named package with a corpus-root version is the project
+    ("fix minimatch in mocha 8.4.0"); any other named package or version
+    narrows which dependencies to fix. request@2.88.2 is itself a corpus
+    root, so in "how can react-scripts drop request?" it counts as the
+    dependency only because it is named second.
+    """
+    projects, advisories, packages, versions = [], set(), set(), set()
+    for _, ids in resolved:
+        for node_id in ids:
+            kind = node_type(ctx, node_id)
+            if kind == "Vulnerability":
+                advisories.add(node_id)
+                continue
+            if kind not in ("Package", "PackageVersion"):
+                continue
+            roots = [v for v in project_versions(ctx, node_id)
+                     if (ctx.store.get_entity(v) or {}).get("properties", {}).get("is_root")]
+            if roots and not projects:
+                projects = roots
+            elif kind == "Package":
+                packages.add(node_id.removeprefix("npm:"))
+            else:
+                versions.add(node_id)
+    return projects, advisories, packages, versions
+
+
+def remediation_totals(rows: list[dict]) -> dict:
+    """Over every planned copy (not the capped list): how each can be fixed."""
+    return {"copies": len(rows), "by_status": dict(Counter(r["plan"]["status"] for r in rows).most_common()),
+            "fully_resolved": sum(r["resolved"] for r in rows), "projects": sorted({r["project"] for r in rows})}
+
+
+def run_remediation(ctx: DepGraphContext, resolved) -> dict:
+    """A fix plan for each vulnerable copy the question points at (npm/remediation.py)."""
+    result = {"pattern": "remediation", "results": [], "total_results": 0}
+    if ctx.releases is None:
+        return {**result, "warning": "no release metadata loaded; run scripts/build_remediation.py"}
+    projects, advisories, packages, versions = remediation_scope(ctx, resolved)
+    if projects:
+        lockfiles = [(p, lf) for p in projects for lf in lockfiles_for(ctx, p)]
+    else:  # no project named: every lockfile holding the named advisory / dependency
+        docs = set()
+        for vuln_id in advisories:
+            docs.update(exposed_lockfiles(ctx.store, vuln_id))
+        for version in versions | {v for name in packages for v in project_versions(ctx, f"npm:{name}")}:
+            docs.update(lockfiles_for(ctx, version))
+        lockfiles = [(root_of_lockfile(d), d) for d in sorted(docs)]
+
+    groups: dict[tuple[str, str, str], dict] = {}
+    for project, lockfile in lockfiles:
+        for hit in exposure(ctx.store, project, lockfile, vulnerability_ids=advisories or None):
+            version_id = hit["version_id"]
+            if (packages or versions) and package_of(version_id) not in packages and version_id not in versions:
+                continue
+            groups.setdefault((project, lockfile, version_id), {"path": hit["path"], "depth": hit["depth"]})
+
+    missing_before = set(ctx.releases.missing)
+    rows = []
+    for (project, lockfile, version_id), group in groups.items():
+        plan = plan_fix(ctx.store, ctx.releases, lockfile, version_id, advisories or None)
+        rows.append({"project": project, "lockfile_doc_id": lockfile, "version_id": version_id, **group,
+                     "advisories": [advisory_row(ctx, a) for a in plan["advisories"]],
+                     "plan": plan, "actions": actions(plan), "resolved": is_resolved(plan)})
+    worst = {id(r): min((SEVERITY_ORDER.get(a.get("severity"), 4) for a in r["advisories"]), default=4) for r in rows}
+    rows.sort(key=lambda r: (worst[id(r)], r["depth"], r["version_id"]))
+    result.update(results=rows[:MAX_PLANS], total_results=len(rows), totals=remediation_totals(rows))
+    if new_missing := ctx.releases.missing - missing_before:
+        result["warning"] = (f"release metadata missing for {sorted(new_missing)}; those plans may be "
+                             f"incomplete (run scripts/fetch_release_metadata.py, then scripts/build_remediation.py)")
+    return result
+
+
 def run_neighbors(ctx: DepGraphContext, resolved, relation: str | None) -> dict:
     rows = []
     for _, ids in resolved:
@@ -245,6 +324,8 @@ def run_relational(ctx: DepGraphContext, decision: BaseModel, resolved) -> dict:
         return run_affected_projects(ctx, resolved)
     if pattern == "dependency_path":
         return run_dependency_path(ctx, resolved)
+    if pattern == "remediation":
+        return run_remediation(ctx, resolved)
     return run_neighbors(ctx, resolved, decision.relation)
 
 
