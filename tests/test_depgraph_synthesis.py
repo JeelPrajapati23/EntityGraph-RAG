@@ -115,7 +115,8 @@ def test_remediation_facts_carry_the_plan_and_router_totals():
     [fact] = evidence["facts"]
     assert fact.startswith("In mocha@8.4.0: mocha@8.4.0 → depends_on → minimatch@3.0.4 [VULNERABLE: GHSA-74fj-2j2h-c42q")
     assert "excludes every fixed version" in fact and "minimatch@3.0.5" in fact and "mocha 8.4.0 -> 10.6.0" in fact
-    assert evidence["totals"][0].startswith("1 vulnerable dependency copies planned across mocha@8.4.0")
+    assert evidence["totals"][0] == ("1 vulnerable dependency copy planned across mocha@8.4.0: "
+                                     "a dependent's declared range excludes every fixed version: 1.")
     assert [a["vulnerability_id"] for a in evidence["advisories"]] == ["GHSA-74fj-2j2h-c42q"]
 
 

@@ -183,8 +183,9 @@ def _remediation_facts(result: dict) -> tuple[list[str], list[str], list[dict], 
     totals = []
     t = result.get("totals")
     if t:
-        by_status = ", ".join(f"{n} {REMEDIATION_STATUS[s]}" for s, n in t["by_status"].items())
-        totals.append(f"{t['copies']} vulnerable dependency copies planned across "
+        by_status = "; ".join(f"{REMEDIATION_STATUS[s]}: {n}" for s, n in t["by_status"].items())
+        copies = "copy" if t["copies"] == 1 else "copies"
+        totals.append(f"{t['copies']} vulnerable dependency {copies} planned across "
                       f"{', '.join(short(p) for p in t['projects'])}: {by_status}.")
         totals.append(f"{t['fully_resolved']} of {t['copies']} can be fixed without an npm override.")
     else:
