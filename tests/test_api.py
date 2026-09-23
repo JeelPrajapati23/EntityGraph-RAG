@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 import reachfix.api.app as app_module
 from reachfix.api import Resources, create_app
-from reachfix.api.views import fix_plans, result_subgraph
+from reachfix.api.views import fix_plans, plan_display, result_subgraph
 from reachfix.depgraph import DepGraphContext
 from reachfix.graph import NetworkXGraphStore
 from reachfix.npm.graph_load import to_entity
@@ -164,7 +164,8 @@ BLOCKED_PLAN = {
     "version_id": "npm:path-to-regexp@0.1.7", "package": "path-to-regexp", "current_version": "0.1.7",
     "status": "blocked", "target_version": "0.1.13",
     "override": {"package": "path-to-regexp", "version": "0.1.13", "outside_ranges": ["npm:express@4.17.1"]},
-    "dependents": [{"dependent": "npm:express@4.17.1", "range": "0.1.7", "admits": None, "upgrade": {
+    "dependents": [{"dependent": "npm:express@4.17.1", "dep_name": "path-to-regexp", "range": "0.1.7", "admits": None,
+                    "upgrade": {
         "version_id": "npm:express@4.17.1", "package": "express", "current_version": "4.17.1",
         "status": "upgrade_root", "target_version": "4.22.0"}}],
 }
@@ -193,3 +194,30 @@ def test_fix_plans_skip_an_uploaded_projects_manifest_edit():
         "project": "project:my-app@0.1.0", "version_id": plan["version_id"], "path": [], "plan": plan,
         "actions": [], "resolved": True, "advisories": []}]})
     assert summary["upgrades"] == {"npm:path-to-regexp@0.1.7": "npm:path-to-regexp@0.1.13"}
+
+
+def test_plan_display_upgrade_of_the_blocking_root():
+    shown = plan_display(BLOCKED_PLAN)
+    assert shown["label"] == "upgrade the project"
+    assert shown["why"] == ('path-to-regexp@0.1.13 is the lowest fixed version, but express@4.17.1 ("0.1.7") '
+                            'excludes every fixed version.')
+    assert [(s["text"], s["command"]) for s in shown["steps"]] == [
+        ("Upgrade express 4.17.1 → 4.22.0.", "npm install express@4.22.0")]
+
+
+def test_plan_display_uploaded_project_edits_its_package_json():
+    manifest_edit = {"version_id": "project:my-app@0.1.0", "dep_name": "path-to-regexp", "current_range": "0.1.7",
+                     "status": "edit_manifest", "target_version": "0.1.13", "suggested_range": "^0.1.13"}
+    plan = {**BLOCKED_PLAN, "dependents": [{**BLOCKED_PLAN["dependents"][0], "dependent": "project:my-app@0.1.0",
+                                            "upgrade": manifest_edit}]}
+    shown = plan_display(plan)
+    assert shown["label"] == "edit package.json" and "my-app@0.1.0 (\"0.1.7\")" in shown["why"]
+    assert [s["command"] for s in shown["steps"]] == ['"path-to-regexp": "^0.1.13"', "npm install"]
+
+
+def test_plan_display_in_range_is_a_lockfile_refresh():
+    plan = {"version_id": "npm:follow-redirects@1.13.1", "package": "follow-redirects", "current_version": "1.13.1",
+            "status": "in_range", "target_version": "1.16.0", "dependents": []}
+    shown = plan_display(plan)
+    assert shown["label"] == "refresh the lockfile"
+    assert shown["steps"] == [{"text": "Refresh the lockfile:", "command": "npm update follow-redirects", "kind": "step"}]

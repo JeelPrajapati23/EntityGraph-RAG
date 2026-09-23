@@ -8,6 +8,7 @@ graph. Rows are capped: react-scripts alone has 177 advisories in its tree.
 """
 
 from ..graph import GraphStore, graph_node
+from ..npm.remediation import summarize
 
 MAX_DRAWN_ROWS = 40  # rows arrive ranked (worst severity / shallowest first)
 MAX_FIX_PLANS = 10
@@ -58,6 +59,74 @@ def _upgrades(plan: dict) -> dict[str, str]:
     return out
 
 
+def _step(text: str, command: str | None = None, kind: str = "step") -> dict:
+    return {"text": text, "command": command, "kind": kind}
+
+
+def _names(upgrades: dict) -> str:
+    return ", ".join(f"{name} {u['from']} → {u['version']}" for name, u in sorted(upgrades.items()))
+
+
+def plan_display(plan: dict, incomplete: list[str] | None = None) -> dict:
+    """A plan as the page shows it: a short label, one line of why, and steps with copyable commands.
+
+    Steps of kind "note" are context (no action). The override fallback is
+    left out: the page draws it from the plan's `override`.
+    """
+    name, status, target = plan["package"], plan["status"], plan.get("target_version")
+    notes = [_step(f"Release metadata for {', '.join(incomplete)} is missing, so this plan may miss fixed versions "
+                   f"or upgrade paths.", kind="note")] if incomplete and status != "no_metadata" else []
+    if status == "upgrade_root":
+        return {"label": "upgrade the project", "why": "",
+                "steps": notes + [_step(f"Upgrade {name} {plan['current_version']} → {target}.", f"npm install {name}@{target}")]}
+    if status == "in_range":
+        return {"label": "refresh the lockfile", "why": f"{name}@{target} fits every dependent's declared range.",
+                "steps": notes + [_step("Refresh the lockfile:", f"npm update {name}")]}
+    if status == "split":
+        copies = "; ".join(f"{name}@{d['admits']} for {d['dependent'].removeprefix('npm:')} ({d['range']})"
+                           for d in plan["dependents"])
+        return {"label": "refresh the lockfile", "why": f"No single version fits every dependent, so npm installs "
+                                                        f"separate copies: {copies}.",
+                "steps": notes + [_step("Refresh the lockfile:", f"npm update {name}")]}
+    if status not in ("blocked", "no_fix") or not plan.get("dependents"):
+        # no_fix with nothing to upgrade, or no_metadata: the planner's own text is the whole story.
+        return {"label": {"no_fix": "no fixed release", "no_metadata": "no release data"}.get(status, status.replace("_", " ")),
+                "why": "", "steps": notes + [_step(a, kind="note") for a in plan.get("actions", [])]}
+
+    blocked = [d for d in plan["dependents"] if d["admits"] is None]
+    blockers = ", ".join(f"{d['dependent'].removeprefix('npm:').removeprefix('project:')} (\"{d['range']}\")"
+                         for d in blocked[:3]) + (f" and {len(blocked) - 3} more" if len(blocked) > 3 else "")
+    why = (f"No release of {name} newer than {plan['current_version']} is fixed, so it has to be dropped by "
+           f"upgrading what depends on it: {blockers}." if status == "no_fix" else
+           f"{name}@{target} is the lowest fixed version, but {blockers} "
+           f"{'excludes' if len(blocked) == 1 else 'exclude'} every fixed version.")
+    s = summarize(plan)
+    steps = list(notes)
+    for dep, m in sorted(s["manifest"].items()):
+        steps.append(_step(f"In your package.json, change {dep} from \"{m['from']}\" to:", f'"{dep}": "{m["to"]}"'))
+    if s["manifest"]:
+        steps.append(_step("Reinstall:", "npm install"))
+    for dep, u in sorted(s["root"].items()):
+        steps.append(_step(f"Upgrade {dep} {u['from']} → {u['version']}.", f"npm install {dep}@{u['version']}"))
+    if s["refresh"]:
+        steps.append(_step(f"Refresh the lockfile to take {_names(s['refresh'])}; each fits the ranges its own "
+                           f"dependents declare.", f"npm update {' '.join(sorted(s['refresh']))}"))
+    if s["via"]:
+        steps.append(_step(f"These come with it (lowest versions that work): {_names(s['via'])}.", kind="note"))
+    if s["unchecked"]:
+        steps.append(_step(f"Assumed to move together, not checked: {'; '.join(s['unchecked'])}.", kind="note"))
+    if s["unresolved"]:
+        steps.append(_step(f"No upgrade path for: {'; '.join(s['unresolved'])}.", kind="note"))
+    fine = [d for d in plan["dependents"] if d["admits"] is not None]
+    if fine:
+        steps.append(_step("The other dependents already accept a fixed version after a lockfile refresh: "
+                           + ", ".join(f"{d['dependent'].removeprefix('npm:')} → {name}@{d['admits']}" for d in fine[:3])
+                           + (f" and {len(fine) - 3} more" if len(fine) > 3 else "") + ".", kind="note"))
+    label = ("edit package.json" if s["manifest"] else "upgrade the project" if s["root"]
+             else "upgrade dependents" if s["refresh"] or s["via"] else "no upgrade path")
+    return {"label": label, "why": why, "steps": steps}
+
+
 def fix_plans(result: dict) -> list[dict]:
     """A remediation result's rows as plan_summaries."""
     if (result.get("executed_pattern") or result.get("pattern")) != "remediation":
@@ -66,7 +135,7 @@ def fix_plans(result: dict) -> list[dict]:
 
 
 def plan_summaries(rows: list[dict]) -> list[dict]:
-    """Remediation rows without the plan tree: status, steps, and which path nodes the fix upgrades."""
+    """Remediation rows without the plan tree: status, steps (plan_display), and which path nodes the fix upgrades."""
     return [{
         "project": row["project"],
         "dev_only": row.get("dev_only", False),
@@ -80,4 +149,5 @@ def plan_summaries(rows: list[dict]) -> list[dict]:
         "advisories": [{"vulnerability_id": a["vulnerability_id"], "severity": a.get("severity")}
                        for a in row["advisories"]],
         "upgrades": _upgrades(row["plan"]),
+        **plan_display({**row["plan"], "actions": row["actions"]}, row.get("incomplete")),
     } for row in rows[:MAX_FIX_PLANS]]

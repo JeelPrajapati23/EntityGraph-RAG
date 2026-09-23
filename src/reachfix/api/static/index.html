@@ -128,6 +128,10 @@
   .steps li::before { content: counter(step); flex-shrink: 0; width: 22px; height: 22px; border-radius: 99px;
                       background: var(--fix); color: var(--panel); font: 11px/22px var(--mono); text-align: center; }
   .steps li.fallback::before { content: "↺"; background: transparent; border: 1px solid var(--line2); color: var(--muted); line-height: 20px; }
+  .steps li.fallback, .steps li.note { counter-increment: none; }
+  .steps li.note { color: var(--muted); }
+  .steps li.note::before { content: ""; background: none; }
+  .plan .why { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
   .steps code { font-size: 12px; background: var(--sunk); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
   .cmd { display: flex; align-items: center; gap: 8px; margin-top: 6px; background: var(--ink); color: var(--on-ink);
          border-radius: 8px; padding: 8px 10px 8px 12px; }
@@ -794,23 +798,28 @@ function planCard(p) {
   const target = p.target_version ? ` → <code style="color:var(--fix)">${esc(pkg)}@${esc(p.target_version)}</code>` : "";
   const sevs = {};
   for (const a of p.advisories) sevs[a.severity ?? "UNLABELED"] = (sevs[a.severity ?? "UNLABELED"] ?? 0) + 1;
-  // actions() ends with its own "Fallback: `overrides`…" step; the override is drawn once, below, as a copyable block.
-  const steps = p.override?.version ? p.actions.filter(a => !a.startsWith("Fallback")) : p.actions;
+  // p.steps (views.plan_display) are short steps, each with an optional copyable command; notes are unnumbered.
+  // The override fallback is drawn from p.override, once.
+  const steps = (p.steps ?? p.actions.map(a => ({ text: a, command: null, kind: "step" }))).map(st => `
+    <li class="${st.kind === "note" ? "note" : ""}"><div style="flex:1; min-width:0">${stepHtml(st.text)}${
+      st.command ? cmdBlock(st.command) : ""}</div></li>`).join("");
   const override = p.override?.version
-    ? `<li class="fallback"><div style="flex:1; min-width:0">Fallback if the dependents can't move: an npm override${
+    ? `<li class="fallback"><div style="flex:1; min-width:0">Fallback: an npm override${
         p.override.outside_ranges?.length ? `, outside the range ${esc(p.override.outside_ranges.map(shortId).join(", "))} declares` : ""}.
+        Test before relying on it.
         ${cmdBlock(`"overrides": { "${p.override.package}": "${p.override.version}" }`)}</div></li>` : "";
   return `<article class="card plan">
     <div class="plan-head">
       <span class="eyebrow">Fix plan</span>
-      <span class="tag ${p.resolved ? "ok" : "bad"}">${esc(STATUS[p.status] ?? p.status.replaceAll("_", " "))}</span>
+      <span class="tag ${p.resolved ? "ok" : "bad"}">${esc(p.label ?? STATUS[p.status] ?? p.status.replaceAll("_", " "))}</span>
       ${p.resolved ? "" : `<span class="tag bad">not fully resolved</span>`}
       ${p.dev_only ? `<span class="tag">dev</span>` : ""}
       <button type="button" class="redraw" data-focus="${esc(p.version_id)}" style="margin-left:auto; border:0; background:none; padding:0; font-size:12px; text-decoration:underline; color:var(--text2)">show in graph</button>
     </div>
     <div style="font-size:14px"><code>${esc(shortId(p.version_id))}</code>${target}
       <span style="margin-left:6px">${Object.entries(sevs).map(([s, n]) => sevChip(s, n)).join(" ")}</span></div>
-    <ol class="steps">${steps.map(a => `<li><div style="flex:1; min-width:0">${stepHtml(a)}</div></li>`).join("")}${override}</ol>
+    ${p.why ? `<p class="why">${stepHtml(p.why)}</p>` : ""}
+    <ol class="steps">${steps}${override}</ol>
   </article>`;
 }
 
