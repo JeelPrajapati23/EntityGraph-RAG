@@ -55,6 +55,56 @@ Every fetched record goes into a `manifest.jsonl` with package, ecosystem,
 version, source URL and fetch time, the same provenance discipline the
 finance version used.
 
+## Acquisition (Phase 1)
+
+```bash
+uv run python scripts/fetch_lockfiles.py     # → data/raw/lockfiles/<slug>/package-lock.json
+uv run python scripts/fetch_osv.py           # → data/raw/osv/{vulns/<id>.json, package_vulns.jsonl}
+uv run python scripts/fetch_npm_metadata.py  # → data/raw/npm/packuments/<name>.json
+```
+
+All three are incremental and write a `manifest.jsonl` next to their
+output. Re-running only fetches what's new or changed (`--refresh` forces a
+full fetch). The OSV and registry scripts read the lockfile manifest, so
+run the lockfile script first.
+
+**First full run (2026-09-23):**
+
+| | |
+|---|---|
+| Lockfiles | 20 roots, 2–1,936 installed packages each |
+| Unique package versions / names | 2,466 / 1,746 |
+| Package versions with ≥1 advisory | 220 |
+| Advisories | 296 (295 GHSA, 1 MAL). 285 have a CVE alias |
+| Severity | 28 critical, 134 high, 106 moderate, 27 low, 1 unlabeled |
+| Disk | lockfiles 2.9 MB, trimmed packuments 16 MB, advisories 2.1 MB |
+
+Every root has at least one advisory in its tree. Counts range from 5
+(`jsonwebtoken`) to 177 (`react-scripts`). For `axios@0.21.1` there are 24
+advisories on axios itself and 5 on `follow-redirects@1.13.1`, the
+transitive dependency the plan's example uses.
+
+`package_vulns.jsonl` is OSV's own server-side matching of each package
+version to advisories. It is **not** graph input: `HAS_VULNERABILITY` is
+derived by our own semver matcher in Phase 3/4. It is kept as ground truth
+to test that matcher against.
+
+**Things found during the first run:**
+
+- **Malicious-package advisories.** OSV includes OpenSSF `MAL-` records
+  alongside GHSA ones. The one hit is `MAL-2023-462`: `fsevents` 1.x
+  downloaded binaries from a storage bucket that was later taken over, and
+  `fsevents@1.2.9` is in a corpus tree. MAL records have no GHSA severity
+  label, and their `details` text is templated incident boilerplate rather
+  than an exploit description, so Phase 3's condition extraction should
+  skip them.
+- **OSV `modified` precision differs by endpoint.** `/v1/querybatch` returns
+  microseconds and `/v1/vulns/{id}` returns nanoseconds. The cache check
+  compares at microsecond precision (`entitygraph_rag.npm.osv.normalize_modified`).
+- **npm fetch timeout.** npm's default 5-minute fetch timeout let one stalled
+  registry socket hang `browser-sync` for minutes. `fetch_lockfiles.py`
+  passes `--fetch-timeout=60000 --fetch-retries=4`.
+
 ## Schema
 
 See [`schema/v2.yaml`](../schema/v2.yaml). Key decisions:

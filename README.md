@@ -25,7 +25,9 @@ retrieval instead of pure vector search).
 
 ## Status
 
-DepGraph Phase 0 (schema v2 and corpus scope) is done. For the finance
+DepGraph Phases 0–1 are done: schema v2, corpus scope, and data
+acquisition (date-pinned lockfiles, OSV advisories and npm registry
+metadata for 20 roots; see [`docs/dataset.md`](docs/dataset.md)). For the finance
 version, the full pipeline from raw documents through a cited,
 natural-language answer is in place: dataset, schema, data acquisition,
 ingestion/chunking, entity/relation extraction, entity resolution, graph
