@@ -61,7 +61,18 @@ Or serve the chat + graph demo page and HTTP API (`/query`,
 uv run reachfix
 ```
 
-Both need the built data under `data/processed/depgraph/`. The build
+Or use it from an MCP client (Claude Code picks up the repo's `.mcp.json`;
+for other clients, run `uv run reachfix-mcp` from the repo directory). The
+tools are `list_projects`, `project_exposure`, `affected_projects`,
+`dependency_path`, `plan_fix`, `search_advisories`, `explore`,
+`scan_lockfile` and `ask`:
+
+```bash
+uv run reachfix-mcp                                        # stdio
+uv run reachfix-mcp --transport streamable-http --port 8001
+```
+
+All of these need the built data under `data/processed/depgraph/`. The build
 scripts are listed in order in [`docs/dataset.md`](docs/dataset.md).
 
 ## Architecture

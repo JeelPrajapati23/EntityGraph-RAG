@@ -9,6 +9,7 @@ dependencies = [
     "fastapi>=0.141.1",
     "groq>=1.7.0",
     "huggingface-hub>=1.32.0",
+    "mcp>=2.2.0",
     "networkx>=3.7",
     "node-semver>=0.9.1",
     "numpy>=2.5.3",
@@ -22,6 +23,7 @@ dependencies = [
 
 [project.scripts]
 reachfix = "reachfix:main"
+reachfix-mcp = "reachfix.mcp_server:main"
 
 [build-system]
 requires = ["uv_build>=0.12.17,<0.13.0"]
