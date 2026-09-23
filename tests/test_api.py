@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 import reachfix.api.app as app_module
 from reachfix.api import Resources, create_app
-from reachfix.api.views import result_subgraph
+from reachfix.api.views import fix_plans, result_subgraph
 from reachfix.depgraph import DepGraphContext
 from reachfix.graph import NetworkXGraphStore
 from reachfix.npm.graph_load import to_entity
@@ -17,7 +17,8 @@ NODES = [
     {"node_id": "npm:follow-redirects@1.13.1", "node_type": "PackageVersion", "name": "follow-redirects@1.13.1",
      "aliases": ["follow-redirects@1.13.1"], "properties": {"in_tree": True}},
     {"node_id": "GHSA-74fj-2j2h-c42q", "node_type": "Vulnerability", "name": "GHSA-74fj-2j2h-c42q",
-     "aliases": ["GHSA-74fj-2j2h-c42q", "CVE-2022-0155"], "properties": {"aliases": ["CVE-2022-0155"]}},
+     "aliases": ["GHSA-74fj-2j2h-c42q", "CVE-2022-0155"],
+     "properties": {"aliases": ["CVE-2022-0155"], "severity": "HIGH", "summary": "Exposure of private headers"}},
 ]
 EDGES = [
     {"subject_id": "npm:axios@0.21.1", "relation": "DEPENDS_ON", "object_id": "npm:follow-redirects@1.13.1",
@@ -148,3 +149,47 @@ def test_scan_reports_exposure_and_subgraph_for_an_uploaded_lockfile(scan_client
 def test_scan_rejects_a_v1_lockfile(scan_client):
     resp = scan_client.post("/scan", json={"lockfileVersion": 1, "dependencies": {}})
     assert resp.status_code == 422 and "v2 or v3" in resp.json()["detail"]
+
+
+def test_result_subgraph_nodes_carry_display_properties(store):
+    nodes = {n["entity_id"]: n for n in result_subgraph(EXPOSURE_RESULT, store)["nodes"]}
+    advisory = nodes["GHSA-74fj-2j2h-c42q"]
+    assert advisory["severity"] == "HIGH" and advisory["cves"] == ["CVE-2022-0155"]
+    assert advisory["summary"] == "Exposure of private headers"
+    assert nodes[PATH[0]]["is_root"] is True and "is_root" not in nodes[PATH[1]]
+
+
+# express@4.17.1 pins path-to-regexp "0.1.7", so the fix upgrades express to a release declaring ~0.1.12.
+BLOCKED_PLAN = {
+    "version_id": "npm:path-to-regexp@0.1.7", "package": "path-to-regexp", "current_version": "0.1.7",
+    "status": "blocked", "target_version": "0.1.13",
+    "override": {"package": "path-to-regexp", "version": "0.1.13", "outside_ranges": ["npm:express@4.17.1"]},
+    "dependents": [{"dependent": "npm:express@4.17.1", "range": "0.1.7", "admits": None, "upgrade": {
+        "version_id": "npm:express@4.17.1", "package": "express", "current_version": "4.17.1",
+        "status": "upgrade_root", "target_version": "4.22.0"}}],
+}
+
+
+def test_fix_plans_map_path_nodes_to_their_upgrades():
+    result = {"executed_pattern": "remediation", "results": [{
+        "project": "npm:express@4.17.1", "version_id": "npm:path-to-regexp@0.1.7",
+        "path": ["npm:express@4.17.1", "npm:path-to-regexp@0.1.7"], "plan": BLOCKED_PLAN,
+        "actions": ["Upgrade express itself from 4.17.1 to 4.22.0."], "resolved": True,
+        "advisories": [{"vulnerability_id": "GHSA-9wv6-86v2-598j", "severity": "HIGH", "summary": "x"}]}]}
+
+    [plan] = fix_plans(result)
+    assert plan["status"] == "blocked" and plan["resolved"] and plan["override"]["version"] == "0.1.13"
+    assert plan["upgrades"] == {"npm:path-to-regexp@0.1.7": "npm:path-to-regexp@0.1.13",
+                                "npm:express@4.17.1": "npm:express@4.22.0"}
+    assert plan["advisories"] == [{"vulnerability_id": "GHSA-9wv6-86v2-598j", "severity": "HIGH"}]
+    assert fix_plans({**result, "executed_pattern": "exposure"}) == []
+
+
+def test_fix_plans_skip_an_uploaded_projects_manifest_edit():
+    manifest_edit = {"version_id": "project:my-app@0.1.0", "dep_name": "path-to-regexp", "current_range": "0.1.7",
+                     "status": "edit_manifest", "target_version": "0.1.13", "suggested_range": "^0.1.13"}
+    plan = {**BLOCKED_PLAN, "dependents": [{**BLOCKED_PLAN["dependents"][0], "upgrade": manifest_edit}]}
+    [summary] = fix_plans({"executed_pattern": "remediation", "results": [{
+        "project": "project:my-app@0.1.0", "version_id": plan["version_id"], "path": [], "plan": plan,
+        "actions": [], "resolved": True, "advisories": []}]})
+    assert summary["upgrades"] == {"npm:path-to-regexp@0.1.7": "npm:path-to-regexp@0.1.13"}

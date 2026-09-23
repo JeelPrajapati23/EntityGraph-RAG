@@ -5,210 +5,978 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>reachfix</title>
 <link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 <style>
   :root {
-    --bg: #f7f7f5; --panel: #ffffff; --text: #1d1d1b; --muted: #6b6b66; --border: #e2e1dc;
-    --accent: #2f5fd0; --warn: #a15c00;
+    --bg: #f4f1ea; --panel: #fbfaf6; --sunk: #eeeae0; --dot: #d6d0c2;
+    --text: #17181c; --text2: #3f3e3a; --muted: #5e5d57; --line: #dedad0; --line2: #cfcabd; --edge: #a9a395;
+    --ink: #17181c; --on-ink: #f4f1ea;
+    --vuln: #b8361c; --vuln-ink: #8e2a14; --vuln-tint: #f8e3dc; --on-vuln: #ffffff;
+    --fix: #1e6b4f; --fix-tint: #ddeee5; --cite-a: #7a5a12;
+    --crit: #8e1b12; --mod: #9a6a00; --low: #5e5d57;
+    --serif: "Newsreader", Georgia, serif;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
   }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #141413; --panel: #1f1f1d; --text: #ecebe6; --muted: #9b9a94; --border: #34332f;
-            --accent: #7ea2ff; --warn: #e0a24a; }
+    :root {
+      --bg: #141412; --panel: #1c1c1a; --sunk: #181816; --dot: #2e2d29;
+      --text: #ece9e1; --text2: #c9c6bd; --muted: #9a978e; --line: #34332f; --line2: #45433e; --edge: #6e6b63;
+      --ink: #ece9e1; --on-ink: #141412;
+      --vuln: #e0664a; --vuln-ink: #f2a08c; --vuln-tint: #3a1d16; --on-vuln: #141412;
+      --fix: #5dbe94; --fix-tint: #15291f; --cite-a: #d9b460;
+      --crit: #ff7a66; --mod: #d9a93a; --low: #9a978e;
+    }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text);
-         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  header { padding: 14px 16px; border-bottom: 1px solid var(--border); }
-  header h1 { margin: 0; font-size: 17px; }
-  header p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
-  main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; padding: 16px;
-         height: calc(100vh - 66px); }
-  @media (max-width: 800px) { main { grid-template-columns: 1fr; height: auto; } #graph { height: 420px; } }
-  section { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px;
-            display: flex; flex-direction: column; min-height: 0; }
-  form { display: flex; gap: 8px; }
-  input { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px;
-          background: var(--bg); color: var(--text); font: inherit; }
-  button { padding: 8px 14px; border: 0; border-radius: 6px; background: var(--accent); color: #fff;
-           font: inherit; cursor: pointer; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 var(--sans);
+         display: flex; flex-direction: column; }
+  a { color: inherit; }
+  a:hover { color: var(--vuln); }
+  code, .mono { font-family: var(--mono); }
+  button { font: inherit; color: inherit; cursor: pointer; }
   button:disabled { opacity: .5; cursor: wait; }
-  #output { overflow-y: auto; margin-top: 12px; }
-  .badge { display: inline-block; padding: 1px 8px; border-radius: 99px; border: 1px solid var(--accent);
-           color: var(--accent); font-size: 12px; }
+  [hidden] { display: none !important; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .muted { color: var(--muted); font-size: 13px; }
-  .warn { color: var(--warn); font-size: 13px; }
-  .answer { margin: 10px 0; overflow-wrap: anywhere; }
-  .answer.plain { white-space: pre-wrap; }
+  .warn { color: var(--vuln-ink); font-size: 13px; }
+  .eyebrow { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+             color: var(--muted); }
+
+  /* header */
+  header { height: 64px; flex-shrink: 0; padding: 0 40px; display: flex; align-items: center; gap: 40px;
+           border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand span { font: italic 24px var(--serif); letter-spacing: -.01em; }
+  nav { display: flex; gap: 4px; }
+  nav button { border: 0; background: transparent; padding: 8px 14px; border-radius: 8px; font-size: 14px;
+               font-weight: 500; color: var(--text2); }
+  nav button[aria-selected="true"] { background: var(--ink); color: var(--on-ink); }
+  nav button:not([aria-selected="true"]):hover { background: var(--sunk); }
+  #stats { margin-left: auto; display: flex; gap: 20px; font: 12px var(--mono); color: var(--muted); }
+
+  /* layout */
+  main { flex: 1; min-height: 0; padding: 24px 40px; display: grid; gap: 24px;
+         grid-template-columns: minmax(380px, 560px) minmax(0, 1fr); }
+  main[data-mode="explore"] { grid-template-columns: 340px minmax(0, 1fr); }
+  #left { min-height: 0; display: flex; flex-direction: column; }
+  .view { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 16px; }
+  .scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 16px;
+            padding-right: 4px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 22px; }
+  .intro h2 { margin: 0 0 6px; font: 500 28px/1.15 var(--serif); letter-spacing: -.01em; }
+  .intro p { margin: 0; color: var(--text2); }
+
+  /* chips and badges */
+  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 99px;
+          font-size: 12px; border: 1px solid var(--text); font-family: var(--mono); }
+  .chip.ok { border: 0; background: var(--fix-tint); color: var(--fix); font-family: var(--sans); font-weight: 500; }
+  .chip.bad { border: 0; background: var(--vuln-tint); color: var(--vuln-ink); font-family: var(--sans); font-weight: 500; }
+  .sev { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 11px; font-weight: 600;
+         color: var(--on-vuln); background: var(--low); }
+  .tag { font: 11px var(--mono); padding: 1px 6px; border-radius: 4px; background: var(--sunk); color: var(--text2); }
+  .tag.bad { background: var(--vuln-tint); color: var(--vuln-ink); }
+  .tag.ok { background: var(--fix-tint); color: var(--fix); }
+  .cite { display: inline-block; font: 11px/1.4 var(--mono); padding: 0 5px; border: 1px solid var(--text);
+          border-radius: 4px; text-decoration: none; vertical-align: 1px; }
+  .cite.a { border-color: var(--cite-a); color: var(--cite-a); }
+  .suggest { display: flex; gap: 6px; flex-wrap: wrap; }
+  .suggest button { border: 1px solid var(--line); background: var(--bg); border-radius: 99px; padding: 5px 10px;
+                    font-size: 12px; color: var(--text2); text-align: left; }
+  .suggest button:hover { border-color: var(--line2); color: var(--text); }
+  #view-ask.asked .composer .suggest { display: none; }
+
+  /* thread */
+  .turn { display: flex; flex-direction: column; gap: 12px; }
+  .bubble { align-self: flex-end; max-width: 440px; padding: 12px 16px; background: var(--ink); color: var(--on-ink);
+            border-radius: 14px 14px 4px 14px; line-height: 1.45; overflow-wrap: anywhere; }
+  .meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; }
+  .meta .reason { color: var(--muted); flex-basis: 100%; }
+  .meta .redraw { margin-left: auto; border: 0; background: none; font-size: 12px; color: var(--text2);
+                  text-decoration: underline; padding: 0; }
+  .answer { overflow-wrap: anywhere; line-height: 1.6; color: var(--text2); }
   .answer > :first-child { margin-top: 0; }
+  .answer > :last-child { margin-bottom: 0; }
+  .answer > p:first-child { font: 500 18px/1.4 var(--serif); color: var(--text); }
+  .answer strong { color: var(--text); }
   .answer p, .answer ul, .answer ol { margin: 0 0 10px; }
+  .answer ul, .answer ol { padding-left: 20px; }
   .answer li { margin-bottom: 4px; }
-  .answer code { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
-  .answer pre { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px;
-                overflow-x: auto; }
-  .answer pre code { border: 0; padding: 0; }
-  .answer table { border-collapse: collapse; margin: 0 0 10px; font-size: 13px; }
-  .answer th, .answer td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; }
-  h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 16px 0 6px; }
-  ul { padding-left: 18px; margin: 0; }
-  li { margin-bottom: 8px; }
-  code { font-size: 13px; }
-  details summary { cursor: pointer; color: var(--muted); font-size: 13px; margin-top: 16px; }
-  .sev { font-size: 12px; font-weight: 600; }
-  .scanbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; font-size: 13px; }
-  .scanbar button { background: transparent; color: var(--accent); border: 1px solid var(--accent); padding: 5px 12px; }
-  .scanbar label { color: var(--muted); display: flex; align-items: center; gap: 4px; }
-  section.dragover { outline: 2px dashed var(--accent); outline-offset: -6px; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-  .chip { padding: 1px 8px; border-radius: 99px; font-size: 12px; font-weight: 600; color: #fff; }
-  .row { padding: 8px 0; border-top: 1px solid var(--border); }
-  .chain { font-size: 12px; overflow-wrap: anywhere; }
-  .tag { font-size: 11px; color: var(--muted); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
-  .plan ol { padding-left: 18px; margin: 4px 0 0; }
-  .plan li { margin-bottom: 4px; font-size: 13px; }
-  #graph { flex: 1; min-height: 300px; margin-top: 12px; border: 1px solid var(--border); border-radius: 6px; }
+  .answer code { font-size: 13px; background: var(--sunk); padding: 1px 5px; border-radius: 4px; }
+  .answer pre { background: var(--sunk); border-radius: 8px; padding: 10px 12px; overflow-x: auto; }
+  .answer pre code { padding: 0; }
+  .answer table { border-collapse: collapse; margin: 0 0 10px; font-size: 13px; display: block; overflow-x: auto; }
+  .answer th, .answer td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; }
+  .answer.plain { white-space: pre-wrap; }
+  .thinking { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px; }
+  .pulse { width: 8px; height: 8px; border-radius: 99px; background: var(--vuln); animation: pulse 1s infinite alternate; }
+  @keyframes pulse { from { opacity: .25; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
+
+  /* fix plans */
+  .plan { display: flex; flex-direction: column; gap: 12px; }
+  .plan-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .plan-head code { font-size: 13px; }
+  .steps { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; counter-reset: step; }
+  .steps li { display: flex; gap: 12px; font-size: 13px; line-height: 1.55; color: var(--text2); counter-increment: step; }
+  .steps li::before { content: counter(step); flex-shrink: 0; width: 22px; height: 22px; border-radius: 99px;
+                      background: var(--fix); color: var(--panel); font: 11px/22px var(--mono); text-align: center; }
+  .steps li.fallback::before { content: "↺"; background: transparent; border: 1px solid var(--line2); color: var(--muted); line-height: 20px; }
+  .steps code { font-size: 12px; background: var(--sunk); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+  .cmd { display: flex; align-items: center; gap: 8px; margin-top: 6px; background: var(--ink); color: var(--on-ink);
+         border-radius: 8px; padding: 8px 10px 8px 12px; }
+  .cmd code { flex: 1; font-size: 12px; background: none; padding: 0; overflow-x: auto; white-space: pre; }
+  .copy { border: 0; background: none; padding: 2px; color: inherit; opacity: .7; display: flex; }
+  .copy:hover { opacity: 1; }
+
+  /* sources */
+  .sources { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .src { display: flex; gap: 10px; font-size: 13px; line-height: 1.5; scroll-margin: 12px; }
+  .src .cite, .src > .sev { flex-shrink: 0; align-self: flex-start; margin-top: 2px; }
+  .src .fact { font: 12px/1.55 var(--mono); color: var(--text2); overflow-wrap: anywhere; }
+  .src.flash { animation: flash 1.2s; border-radius: 6px; }
+  @keyframes flash { from { background: var(--vuln-tint); } to { background: transparent; } }
+  details summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+  .totals { margin: 0; padding-left: 18px; font-size: 13px; color: var(--text2); }
+
+  /* composer */
+  .composer { flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; background: var(--panel);
+              border: 1px solid var(--line2); border-radius: 14px; padding: 10px 10px 12px 16px; }
+  .composer:focus-within { border-color: var(--text); }
+  .composer .row { display: flex; gap: 10px; align-items: center; }
+  .composer input { flex: 1; min-width: 0; border: 0; background: transparent; font: 15px var(--sans); color: var(--text);
+                    padding: 10px 0; outline: none; }
+  .primary { height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: var(--ink); color: var(--on-ink);
+             font-size: 14px; font-weight: 500; }
+  .secondary { height: 44px; padding: 0 16px; border: 1px solid var(--line2); border-radius: 10px; background: transparent;
+               font-size: 14px; font-weight: 500; }
+  .field { display: flex; gap: 8px; align-items: center; background: var(--panel); border: 1px solid var(--line2);
+           border-radius: 12px; padding: 4px 4px 4px 14px; }
+  .field:focus-within { border-color: var(--text); }
+  .field input, .field select { flex: 1; min-width: 0; border: 0; background: transparent; font: 14px var(--mono);
+                                color: var(--text); outline: none; padding: 8px 0; }
+  .field select { flex: 0 0 auto; font-family: var(--sans); font-size: 13px; color: var(--text2); }
+
+  /* scan */
+  .drop { border: 1.5px dashed var(--line2); border-radius: 14px; padding: 22px; display: flex; flex-direction: column;
+          gap: 12px; align-items: flex-start; background: var(--panel); }
+  body.dragover .drop { border-color: var(--vuln); background: var(--vuln-tint); }
+  .drop h2 { margin: 0; font: 500 22px var(--serif); }
+  .drop p { margin: 0; font-size: 13px; color: var(--text2); }
+  .drop .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .drop label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text2); }
+  .kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+  .kpi span { display: block; font-size: 12px; color: var(--muted); }
+  .kpi strong { font: 500 26px var(--mono); }
+  .kpi strong.bad { color: var(--vuln); }
+  .adv-row { display: block; width: 100%; text-align: left; border: 0; border-top: 1px solid var(--line); background: none;
+             padding: 10px 4px; }
+  .adv-row:hover { background: var(--sunk); }
+  .adv-row .line1 { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+  .adv-row .summary { font-size: 13px; color: var(--text2); margin-top: 2px; }
+  .adv-row .chain { font: 11px/1.5 var(--mono); color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
+
+  /* graph panel */
+  #graph-panel { min-height: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+                 padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+  /* Full screen: the Fullscreen API where available, else the panel covers the window (.expanded). */
+  #graph-panel:fullscreen, #graph-panel.expanded { border-radius: 0; border: 0; padding: 20px 32px; background: var(--panel); }
+  #graph-panel.expanded { position: fixed; inset: 0; z-index: 50; }
+  #graph-panel:fullscreen #inspector, #graph-panel.expanded #inspector { max-height: 28vh; }
+  body.graph-expanded { overflow: hidden; }
+  .icon-btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1px solid var(--line2);
+              border-radius: 10px; background: transparent; font-size: 12px; color: var(--text2); }
+  .icon-btn:hover { border-color: var(--text); color: var(--text); }
+  .gp-head { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+  .gp-head h2 { margin: 0; font: 500 22px var(--serif); }
+  #graph-caption { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+  .controls { margin-left: auto; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .seg { display: flex; border: 1px solid var(--line2); border-radius: 10px; padding: 3px; gap: 3px; }
+  .seg button { border: 0; background: transparent; border-radius: 7px; padding: 4px 10px; font-size: 12px; color: var(--text2); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--on-ink); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text2); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .stage { position: relative; flex: 1; min-height: 280px; border-radius: 12px; overflow: hidden;
+           background-color: var(--sunk); background-image: radial-gradient(var(--dot) 1px, transparent 1px);
+           background-size: 20px 20px; }
+  #graph { position: absolute; inset: 0; }
+  #graph-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 40px;
+                 text-align: center; color: var(--muted); font-size: 14px; pointer-events: none; }
+  .zoom { position: absolute; right: 12px; bottom: 12px; display: flex; background: var(--panel); border: 1px solid var(--line);
+          border-radius: 10px; overflow: hidden; }
+  .zoom button { width: 36px; height: 36px; border: 0; background: transparent; display: flex; align-items: center;
+                 justify-content: center; font-size: 16px; }
+  .zoom button + button { border-left: 1px solid var(--line); }
+  #inspector { border-top: 1px solid var(--line); padding-top: 14px; max-height: 240px; overflow-y: auto;
+               display: flex; flex-direction: column; gap: 10px; flex-shrink: 0; }
+  .ins-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .ins-head .name { font: 14px var(--mono); overflow-wrap: anywhere; }
+  .ins-head .acts { margin-left: auto; display: flex; gap: 12px; }
+  .ins-head .acts button { border: 0; background: none; padding: 0; font-size: 13px; text-decoration: underline; }
+  .facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .facts div > span:first-child { display: block; font-size: 12px; color: var(--muted); }
+  .facts div b { font: 400 13px var(--mono); overflow-wrap: anywhere; }
+  .chainline { font: 12px/1.6 var(--mono); color: var(--text2); overflow-wrap: anywhere; }
+  .chainline .v { color: var(--vuln); }
+
+  @media (max-width: 900px) {
+    header { padding: 0 16px; gap: 16px; }
+    #stats { display: none; }
+    nav button { padding: 8px 10px; }
+    main, main[data-mode="explore"] { grid-template-columns: minmax(0, 1fr); padding: 16px; height: auto; }
+    body { height: auto; }
+    .scroll { overflow: visible; }
+    #graph-panel { padding: 16px; }
+    .stage { min-height: 420px; }
+    .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .brand span { font-size: 20px; }
+  }
 </style>
 </head>
 <body>
 <header>
-  <h1>reachfix</h1>
-  <p>Which npm projects a vulnerability reaches, through which dependency chain, and the smallest upgrade that fixes it.
-     Every answer cites graph facts [G#] and advisory text [A#]. You can also scan your own package-lock.json.</p>
+  <div class="brand">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+      <circle cx="4" cy="11" r="2.5"/><circle cx="18" cy="4" r="2.5"/>
+      <circle cx="18" cy="18" r="2.5" fill="var(--vuln)" stroke="var(--vuln)"/><path d="M6.3 10 15.7 5M6.3 12l9.4 5"/>
+    </svg>
+    <span>reachfix</span>
+  </div>
+  <nav role="tablist" aria-label="Mode">
+    <button role="tab" data-mode="ask" aria-selected="true">Ask</button>
+    <button role="tab" data-mode="explore" aria-selected="false">Explore graph</button>
+    <button role="tab" data-mode="scan" aria-selected="false">Scan lockfile</button>
+  </nav>
+  <div id="stats"></div>
 </header>
-<main>
-  <section>
-    <form id="ask">
-      <input id="q" placeholder="e.g. How do I fix CVE-2024-45296 in express@4.17.1?" autocomplete="off">
-      <button id="ask-btn">Ask</button>
-    </form>
-    <div class="scanbar">
-      <button id="scan-btn" type="button">Scan a package-lock.json</button>
-      <input id="scan-file" type="file" accept=".json,application/json" hidden>
-      <label title="Query OSV.dev for versions outside the dataset and the npm registry for release data">
-        <input id="scan-live" type="checkbox" checked> live OSV + registry lookups</label>
-      <span class="muted">or drop the file here</span>
+
+<main data-mode="ask">
+  <section id="left">
+    <div class="view" id="view-ask">
+      <div class="scroll" id="thread">
+        <div class="card intro">
+          <h2>Where does a vulnerability reach?</h2>
+          <p>Ask which npm projects an advisory reaches, through which chain of transitive dependencies, and the
+             smallest upgrade that fixes it. Every answer cites graph facts <span class="cite">G#</span> and advisory
+             text <span class="cite a">A#</span>, and the chains are drawn on the right.</p>
+        </div>
+      </div>
+      <form class="composer" id="ask">
+        <label for="q" class="sr-only">Ask about a package, version or advisory</label>
+        <div class="row">
+          <input id="q" placeholder="Ask about a package, version or CVE…" autocomplete="off">
+          <button class="primary" id="ask-btn">Ask</button>
+        </div>
+        <div class="suggest">
+          <button type="button">Is axios@0.21.1 exposed to CVE-2022-0155?</button>
+          <button type="button">Which projects are affected by CVE-2022-24999?</button>
+          <button type="button">express@4.17.1 is exposed to CVE-2024-45296. What is the smallest upgrade that fixes it?</button>
+          <button type="button">Explain how the follow-redirects vulnerability in axios 0.21.1 could leak data.</button>
+        </div>
+      </form>
     </div>
-    <div id="output"><p class="muted">Try: "Is axios@0.21.1 exposed to CVE-2022-0155?", "Which projects are affected by
-      CVE-2022-24999?", "What should mocha 8.4.0 upgrade to so it stops pulling in a vulnerable minimatch?".
-      The graph panel shows the dependency chains behind graph answers.</p></div>
+
+    <div class="view" id="view-explore" hidden>
+      <form id="explore" class="field">
+        <label for="entity" class="sr-only">Package, version or advisory</label>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"
+             style="color: var(--muted); flex-shrink: 0"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3.5 3.5"/></svg>
+        <input id="entity" placeholder="follow-redirects@1.13.1, qs, CVE-2022-24999" autocomplete="off">
+        <label for="depth" class="sr-only">Depth</label>
+        <select id="depth"><option value="1">1 hop</option><option value="2">2 hops</option><option value="3">3 hops</option></select>
+        <button class="primary" id="explore-btn" style="height: 36px">Explore</button>
+      </form>
+      <div class="scroll" id="explore-out">
+        <div class="card intro">
+          <h2 style="font-size: 24px">Explore the graph</h2>
+          <p>Start from a package, a version or an advisory (GHSA or CVE id) and walk its neighbourhood: dependencies,
+             dependents, advisories, maintainers and licenses. Click any node to see its chain, or explore from it.</p>
+        </div>
+        <div class="suggest">
+          <button type="button">follow-redirects@1.13.1</button>
+          <button type="button">CVE-2022-24999</button>
+          <button type="button">express@4.17.1</button>
+          <button type="button">minimist</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="view" id="view-scan" hidden>
+      <div class="drop">
+        <h2>Scan your package-lock.json</h2>
+        <p>Your lockfile is laid over the dataset graph: every vulnerable version it installs, the chain that pulls
+           it in, and a fix plan that edits your own package.json. Nothing is stored.</p>
+        <div class="row">
+          <button class="primary" id="scan-btn" type="button">Choose a file</button>
+          <input id="scan-file" type="file" accept=".json,application/json" hidden>
+          <span class="muted">or drop it anywhere on the page</span>
+        </div>
+        <label title="Query OSV.dev for versions outside the dataset and the npm registry for release data">
+          <input id="scan-live" type="checkbox" checked> Live OSV + npm registry lookups</label>
+      </div>
+      <div class="scroll" id="scan-out"></div>
+    </div>
   </section>
-  <section>
-    <form id="explore">
-      <input id="entity" placeholder="Explore a package, version or advisory, e.g. follow-redirects@1.13.1" autocomplete="off">
-      <button id="explore-btn">Explore</button>
-    </form>
-    <div id="graph-caption" class="muted" style="margin-top:8px"></div>
-    <div id="graph"></div>
+
+  <section id="graph-panel" aria-label="Graph">
+    <div class="gp-head">
+      <div>
+        <h2>Evidence graph</h2>
+        <p id="graph-caption">Dependency chains behind answers, scans and explorations appear here.</p>
+      </div>
+      <div class="controls">
+        <div class="seg" role="group" aria-label="Show the fix">
+          <button type="button" id="fix-toggle" aria-pressed="true" hidden>Show fix</button>
+        </div>
+        <div class="seg" role="group" aria-label="Layout">
+          <button type="button" data-layout="hop" aria-pressed="true">By hop</button>
+          <button type="button" data-layout="force" aria-pressed="false">Force</button>
+        </div>
+        <button type="button" class="icon-btn" id="fullscreen" aria-pressed="false" title="Full screen (Esc to exit)">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9"/></svg>
+          <span>Full screen</span>
+        </button>
+      </div>
+    </div>
+    <div class="legend" aria-hidden="true">
+      <span><i style="background: var(--ink)"></i>Project</span>
+      <span><i style="border: 1px solid var(--edge); background: var(--panel)"></i>Package</span>
+      <span><i style="border: 1.5px solid var(--vuln); background: var(--vuln-tint)"></i>Vulnerable</span>
+      <span><i style="background: var(--vuln)"></i>Advisory</span>
+      <span><i style="border: 1.5px solid var(--fix); background: var(--fix-tint)"></i>Fix</span>
+    </div>
+    <div class="stage">
+      <div id="graph"></div>
+      <div id="graph-empty">Ask a question, scan a lockfile or explore an entity, and its dependency chains are drawn here.</div>
+      <div class="zoom">
+        <button type="button" data-zoom="out" aria-label="Zoom out">−</button>
+        <button type="button" data-zoom="in" aria-label="Zoom in">+</button>
+        <button type="button" data-zoom="fit" aria-label="Fit to view" title="Fit to view">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="12" height="12" rx="2"/><circle cx="7" cy="7" r="2"/></svg>
+        </button>
+      </div>
+    </div>
+    <div id="inspector"><p class="muted" style="margin: 0">Select a node to see how it is reached and what it carries.</p></div>
   </section>
 </main>
+
 <script>
-const TYPE_COLORS = { Project: "#e67e22", Package: "#7a4fc4", PackageVersion: "#2f5fd0", Vulnerability: "#c0392b",
-                      Maintainer: "#1f8a5b", License: "#5c6770", ExploitCondition: "#b5621b" };
-const SEV_COLORS = { CRITICAL: "#c0392b", HIGH: "#d35400", MODERATE: "#b7950b", LOW: "#5c6770" };
+const $ = id => document.getElementById(id);
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const textColor = () => getComputedStyle(document.documentElement).getPropertyValue("--text").trim();
-
-const network = new vis.Network(document.getElementById("graph"), { nodes: [], edges: [] }, {
-  physics: { stabilization: { iterations: 150 } },
-  edges: { arrows: "to", font: { size: 10, align: "middle", strokeWidth: 0, color: textColor() },
-           color: { color: "#9b9a94" }, smooth: { type: "dynamic" } },
-  nodes: { shape: "dot", size: 14, font: { color: textColor() } },
-});
-
-function drawGraph(subgraph, caption, focusId) {
-  document.getElementById("graph-caption").textContent = caption;
-  network.setData({
-    nodes: subgraph.nodes.map(n => ({
-      id: n.entity_id, label: n.canonical_name, title: `${n.entity_type ?? "?"}: ${n.entity_id}`,
-      color: TYPE_COLORS[n.entity_type] ?? "#888", size: n.entity_id === focusId ? 22 : 14,
-    })),
-    edges: subgraph.edges.map(e => ({
-      from: e.source, to: e.target, label: e.relation,
-      title: e.confidence != null ? `confidence ${e.confidence.toFixed(2)} · ${e.n_citations} citation(s)` : e.relation,
-    })),
-  });
-}
-
-// The model writes Markdown. It is rendered with marked and sanitized with DOMPurify before insertion;
-// if either CDN script didn't load, the answer is shown as escaped plain text instead.
-function answerHtml(text) {
-  if (typeof marked === "undefined" || typeof DOMPurify === "undefined") {
-    return `<div class="answer plain">${esc(text)}</div>`;
-  }
-  const html = DOMPurify.sanitize(marked.parse(text));
-  return `<div class="answer">${html}</div>`;
-}
+const shortId = id => String(id).replace(/^npm:/, "").replace(/^project:/, "");
+const SEV_VAR = { CRITICAL: "--crit", HIGH: "--vuln", MODERATE: "--mod", LOW: "--low" };
+const sevColor = sev => css(SEV_VAR[sev] ?? "--low");
+const sevChip = (sev, n) => `<span class="sev" style="background:${sevColor(sev)}">${esc(sev ?? "UNLABELED")}${n != null ? ` ${n}` : ""}</span>`;
+const osvUrl = id => `https://osv.dev/vulnerability/${encodeURIComponent(id)}`;
+const COPY_ICON = `<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="5" y="5" width="8" height="8" rx="1.5"/><path d="M3 10.5V4.5A1.5 1.5 0 0 1 4.5 3h6"/></svg>`;
 
 async function call(url, options) {
   const resp = await fetch(url, options);
-  const body = await resp.json();
+  const body = await resp.json().catch(() => ({ detail: `HTTP ${resp.status}` }));
   if (!resp.ok) throw new Error(typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail));
   return body;
 }
 
-document.getElementById("ask").addEventListener("submit", async ev => {
+// ---------- modes ----------
+const main = document.querySelector("main");
+function setMode(mode) {
+  main.dataset.mode = mode;
+  for (const tab of document.querySelectorAll("nav button")) tab.setAttribute("aria-selected", tab.dataset.mode === mode);
+  for (const m of ["ask", "explore", "scan"]) $(`view-${m}`).hidden = m !== mode;
+  requestAnimationFrame(() => network?.fit({ animation: false }));
+}
+for (const tab of document.querySelectorAll("nav button")) tab.addEventListener("click", () => setMode(tab.dataset.mode));
+
+call("/health").then(h => {
+  $("stats").innerHTML = [`${h.nodes.toLocaleString()} nodes`, `${h.edges.toLocaleString()} edges`,
+    `${h.advisory_chunks.toLocaleString()} advisory chunks`].map(s => `<span>${s}</span>`).join("");
+}).catch(() => {});
+
+// ---------- graph ----------
+// Layout "hop" puts every node in a column by its longest dependency distance from a root (advisories in the
+// last column), so chains read left to right. "force" is vis-network's physics layout.
+let network = null, nodesDS = null, edgesDS = null, view = null, layout = "hop", showFix = true;
+const meta = new Map();      // node id -> { raw, role, after }
+const baseEdge = new Map();  // edge id -> { color, width }
+
+function computeLevels(sub) {
+  const level = new Map(sub.nodes.map(n => [n.entity_id, 0]));
+  const deps = sub.edges.filter(e => e.relation !== "HAS_VULNERABILITY");
+  const cap = Math.min(sub.nodes.length, 40);
+  const relax = () => {
+    for (let pass = 0; pass < cap; pass++) {
+      let changed = false;
+      for (const e of deps) {
+        const next = (level.get(e.source) ?? 0) + 1;
+        if (next <= cap && (level.get(e.target) ?? 0) < next) { level.set(e.target, next); changed = true; }
+      }
+      if (!changed) break;
+    }
+  };
+  relax();
+  const hits = sub.edges.filter(e => e.relation === "HAS_VULNERABILITY");
+  const vulnLevel = 1 + Math.max(0, ...hits.map(e => level.get(e.source) ?? 0));
+  for (const e of hits) level.set(e.target, Math.max(level.get(e.target) ?? 0, vulnLevel));
+  relax();
+  return { level, vulnLevel };
+}
+
+function nodeRole(n, vulnerable) {
+  if (n.entity_type === "Vulnerability") return "advisory";
+  if (n.is_root || String(n.entity_id).startsWith("project:")) return "project";
+  if (vulnerable.has(n.entity_id)) return "vulnerable";
+  if (n.entity_type === "PackageVersion") return "version";
+  return "other";
+}
+
+function nodeLabel(n, role) {
+  if (role === "advisory" && n.group) {
+    const counts = {};
+    for (const a of n.group.members) counts[a.severity ?? "UNLABELED"] = (counts[a.severity ?? "UNLABELED"] ?? 0) + 1;
+    return `${n.group.members.length} advisories
+${Object.entries(counts).map(([s, c]) => `${c} ${s}`).join(" · ")}`;
+  }
+  if (role === "advisory") {
+    const second = [n.cves?.[0], n.severity].filter(Boolean).join(" · ");
+    return second ? `${n.entity_id}\n${second}` : n.entity_id;
+  }
+  const name = shortId(n.canonical_name ?? n.entity_id);
+  return name.length > 42 ? name.slice(0, 40) + "…" : name;
+}
+
+function nodeStyle(role, { sev, focus } = {}) {
+  const c = {
+    project:    { bg: css("--ink"), border: css("--ink"), font: css("--on-ink"), width: 1 },
+    vulnerable: { bg: css("--vuln-tint"), border: css("--vuln"), font: css("--text"), width: 2 },
+    version:    { bg: css("--panel"), border: css("--line2"), font: css("--text"), width: 1 },
+    other:      { bg: css("--panel"), border: css("--edge"), font: css("--text2"), width: 1, dashes: [3, 3] },
+    advisory:   { bg: sevColor(sev), border: sevColor(sev), font: css("--on-vuln"), width: 1 },
+    fix:        { bg: css("--fix-tint"), border: css("--fix"), font: css("--text"), width: 1.5 },
+    after:      { bg: css("--panel"), border: css("--line2"), font: css("--muted"), width: 1, dashes: [4, 4] },
+    clear:      { bg: css("--panel"), border: css("--fix"), font: css("--fix"), width: 1, dashes: [4, 4] },
+    unresolved: { bg: css("--panel"), border: css("--vuln"), font: css("--vuln-ink"), width: 1, dashes: [4, 4] },
+  }[role];
+  return {
+    color: { background: c.bg, border: c.border, highlight: { background: c.bg, border: css("--text") },
+             hover: { background: c.bg, border: css("--text") } },
+    font: { color: c.font, face: role === "advisory" || role === "clear" || role === "unresolved" ? "IBM Plex Mono" : "IBM Plex Mono",
+            size: 13, multi: false },
+    borderWidth: focus ? 3 : c.width, borderWidthSelected: 3,
+    shapeProperties: { borderRadius: 8, borderDashes: c.dashes ?? false },
+    shadow: focus ? { enabled: true, color: "rgba(0,0,0,.18)", size: 12, x: 0, y: 2 } : { enabled: false },
+  };
+}
+
+// Other relations are labelled on the edge only in small graphs; in larger ones the label is the hover tooltip.
+function edgeSpec(relation, labelled) {
+  if (relation === "HAS_VULNERABILITY") return { color: css("--vuln"), width: 1.8 };
+  if (relation === "DEPENDS_ON") return { color: css("--edge"), width: 1.5 };
+  const name = relation.toLowerCase().replaceAll("_", " ");
+  return { color: css("--edge"), width: 1.2, label: labelled ? name : undefined, title: name };
+}
+
+// A version with many advisories gets one summary node instead of a tall column of them.
+const MAX_ADVISORIES_SHOWN = 4;
+const SEV_RANK = { CRITICAL: 0, HIGH: 1, MODERATE: 2, LOW: 3 };
+
+function collapseAdvisories(sub, focusId) {
+  const byNode = new Map(sub.nodes.map(n => [n.entity_id, n]));
+  const hits = new Map();
+  for (const e of sub.edges) if (e.relation === "HAS_VULNERABILITY") (hits.get(e.source) ?? hits.set(e.source, []).get(e.source)).push(e.target);
+  const dropped = new Set(), groups = [];
+  for (const [version, advisories] of hits) {
+    if (advisories.length <= MAX_ADVISORIES_SHOWN) continue;
+    const members = advisories.map(a => byNode.get(a)).filter(Boolean)
+      .sort((a, b) => (SEV_RANK[a.severity] ?? 4) - (SEV_RANK[b.severity] ?? 4));
+    groups.push({ id: `advisories:${version}`, version, members });
+    for (const a of advisories) dropped.add(`${version}|${a}`);
+  }
+  if (!groups.length) return { sub, groups };
+  const edges = sub.edges.filter(e => !(e.relation === "HAS_VULNERABILITY" && dropped.has(`${e.source}|${e.target}`)));
+  const linked = new Set(edges.flatMap(e => [e.source, e.target]));
+  const nodes = sub.nodes.filter(n => linked.has(n.entity_id) || n.entity_id === focusId || n.entity_type !== "Vulnerability");
+  for (const g of groups) {
+    nodes.push({ entity_id: g.id, canonical_name: `${g.members.length} advisories`, entity_type: "Vulnerability",
+                 severity: g.members[0]?.severity, group: g });
+    edges.push({ source: g.version, target: g.id, relation: "HAS_VULNERABILITY" });
+  }
+  return { sub: { nodes, edges }, groups };
+}
+
+function buildElements(fullSub, plans, focusId) {
+  meta.clear(); baseEdge.clear();
+  const { sub } = collapseAdvisories(fullSub, focusId);
+  const vulnerable = new Set(sub.edges.filter(e => e.relation === "HAS_VULNERABILITY").map(e => e.source));
+  const { level, vulnLevel } = computeLevels(sub);
+  const nodes = sub.nodes.map(n => {
+    const role = nodeRole(n, vulnerable);
+    meta.set(n.entity_id, { raw: n, role });
+    return { id: n.entity_id, level: level.get(n.entity_id), label: nodeLabel(n, role),
+             title: `${n.entity_type ?? "node"}\n${n.entity_id}${n.summary ? "\n" + n.summary : ""}`,
+             ...nodeStyle(role, { sev: n.severity, focus: n.entity_id === focusId }) };
+  });
+  const labelled = sub.edges.length <= 16;
+  const edges = sub.edges.map((e, i) => {
+    const spec = edgeSpec(e.relation, labelled);
+    const id = `e${i}`;
+    baseEdge.set(id, spec);
+    return { id, from: e.source, to: e.target, relation: e.relation, label: spec.label, title: spec.title ?? e.relation,
+             color: { color: spec.color, highlight: css("--text"), hover: css("--text") }, width: spec.width };
+  });
+
+  // "After fix" lane: each plan's path with upgraded versions swapped in, drawn under the current chain.
+  const known = new Set(sub.nodes.map(n => n.entity_id));
+  plans.filter(p => p.path?.length && Object.keys(p.upgrades ?? {}).length && p.path.every(id => known.has(id)))
+    .slice(0, 3).forEach((p, k) => {
+      const after = p.path.map(id => p.upgrades[id] ?? id);
+      const ids = after.map((_, i) => `after:${k}:${i}`);
+      after.forEach((id, i) => {
+        const changed = id !== p.path[i];
+        const role = changed ? "fix" : "after";
+        meta.set(ids[i], { raw: { entity_id: id, canonical_name: shortId(id), entity_type: "PackageVersion" }, role,
+                           after: { of: p.path[i], plan: p, changed } });
+        nodes.push({ id: ids[i], level: level.get(p.path[i]), label: shortId(id),
+                     title: changed ? `After the fix: ${shortId(id)} replaces ${shortId(p.path[i])}` : "Unchanged by the fix",
+                     ...nodeStyle(role) });
+        if (i > 0) {
+          const eid = `ae${k}:${i}`, spec = { color: css(changed ? "--fix" : "--edge"), width: changed ? 2 : 1.2 };
+          baseEdge.set(eid, spec);
+          edges.push({ id: eid, from: ids[i - 1], to: ids[i], color: { color: spec.color }, width: spec.width,
+                       dashes: !changed });
+        }
+      });
+      const first = after.findIndex((id, i) => id !== p.path[i]);
+      if (first >= 0) {
+        const eid = `au${k}`, spec = { color: css("--fix"), width: 1.5 };
+        baseEdge.set(eid, spec);
+        edges.push({ id: eid, from: p.path[first], to: ids[first], label: "upgrade", dashes: [5, 4],
+                     color: { color: spec.color }, width: spec.width, font: { color: css("--fix") } });
+      }
+      const end = `after:${k}:end`, n = p.advisories.length;
+      const role = p.resolved ? "clear" : "unresolved";
+      meta.set(end, { raw: { entity_id: end, canonical_name: "", entity_type: "FixOutcome" }, role, after: { plan: p } });
+      nodes.push({ id: end, level: vulnLevel, title: "",
+                   label: p.resolved ? `✓ clear of ${n} advisor${n === 1 ? "y" : "ies"}` : "not fully resolved",
+                   ...nodeStyle(role) });
+      const eid = `ae${k}:end`, spec = { color: css("--edge"), width: 1.2 };
+      baseEdge.set(eid, spec);
+      edges.push({ id: eid, from: ids[ids.length - 1], to: end, dashes: [3, 4], color: { color: spec.color }, width: spec.width });
+    });
+  return { nodes, edges };
+}
+
+function graphOptions() {
+  const common = {
+    autoResize: true,
+    interaction: { hover: true, tooltipDelay: 150, keyboard: false, multiselect: false },
+    nodes: { shape: "box", margin: { top: 9, bottom: 9, left: 12, right: 12 }, widthConstraint: { maximum: 260 } },
+    edges: { arrows: { to: { enabled: true, scaleFactor: 0.5 } },
+             font: { size: 10, face: "IBM Plex Mono", color: css("--muted"), strokeWidth: 4, strokeColor: css("--sunk") } },
+  };
+  if (layout === "hop") {
+    return { ...common, physics: false,
+      layout: { hierarchical: { enabled: true, direction: "LR", levelSeparation: 260, nodeSpacing: 62, treeSpacing: 90,
+                                blockShifting: true, edgeMinimization: true, parentCentralization: true } },
+      edges: { ...common.edges, smooth: { type: "cubicBezier", forceDirection: "horizontal", roundness: 0.55 } } };
+  }
+  return { ...common,
+    layout: { improvedLayout: (view?.subgraph?.nodes?.length ?? 0) < 150 },
+    physics: { solver: "forceAtlas2Based", forceAtlas2Based: { gravitationalConstant: -70, springLength: 130 },
+               stabilization: { iterations: 250 } },
+    edges: { ...common.edges, smooth: { type: "continuous" } } };
+}
+
+function showGraph(v) {
+  view = v;
+  renderGraph();
+}
+
+function renderGraph() {
+  const sub = view?.subgraph ?? { nodes: [], edges: [] };
+  $("graph-caption").textContent = view?.caption ?? "";
+  $("graph-empty").hidden = sub.nodes.length > 0;
+  if (!sub.nodes.length) $("graph-empty").textContent = view?.emptyText ?? "Nothing to draw.";
+  const canFix = (view?.fixPlans ?? []).some(p => Object.keys(p.upgrades ?? {}).length);
+  $("fix-toggle").hidden = !canFix;
+  $("fix-toggle").parentElement.hidden = !canFix;
+  const { nodes, edges } = buildElements(sub, canFix && showFix ? view.fixPlans : [], view?.focusId);
+  if (network) network.destroy();
+  if (typeof vis === "undefined") { $("graph-empty").hidden = false; $("graph-empty").textContent = "vis-network did not load."; return; }
+  nodesDS = new vis.DataSet(nodes);
+  edgesDS = new vis.DataSet(edges);
+  network = new vis.Network($("graph"), { nodes: nodesDS, edges: edgesDS }, graphOptions());
+  network.on("click", p => select(p.nodes[0] ?? null));
+  if (view?.focusId && meta.has(view.focusId)) { network.selectNodes([view.focusId]); inspect(view.focusId); }
+  else inspect(null);
+}
+
+function neighbours() {
+  const out = new Map(), inc = new Map();
+  for (const e of edgesDS.get()) {
+    (out.get(e.from) ?? out.set(e.from, []).get(e.from)).push(e.to);
+    (inc.get(e.to) ?? inc.set(e.to, []).get(e.to)).push(e.from);
+  }
+  return { out, inc };
+}
+
+function reach(start, adj) {
+  const seen = new Set([start]), queue = [start];
+  while (queue.length) for (const next of adj.get(queue.shift()) ?? []) if (!seen.has(next)) { seen.add(next); queue.push(next); }
+  return seen;
+}
+
+// Clicking a node keeps everything upstream and downstream of it at full strength and fades the rest.
+function select(id) {
+  if (!nodesDS) return;
+  if (!id) {
+    nodesDS.update(nodesDS.getIds().map(n => ({ id: n, opacity: 1 })));
+    edgesDS.update(edgesDS.getIds().map(e => ({ id: e, color: { ...edgesDS.get(e).color, color: baseEdge.get(e).color, opacity: 1 },
+                                                width: baseEdge.get(e).width })));
+    inspect(null);
+    return;
+  }
+  const { out, inc } = neighbours();
+  const keep = new Set([...reach(id, out), ...reach(id, inc)]);
+  nodesDS.update(nodesDS.getIds().map(n => ({ id: n, opacity: keep.has(n) ? 1 : 0.18 })));
+  edgesDS.update(edgesDS.get().map(e => {
+    const on = keep.has(e.from) && keep.has(e.to), base = baseEdge.get(e.id);
+    return { id: e.id, color: { ...e.color, color: base.color, opacity: on ? 1 : 0.12 }, width: on ? base.width + 0.8 : base.width };
+  }));
+  network.selectNodes([id]);
+  inspect(id);
+}
+
+function chainTo(id) {
+  const { inc } = neighbours(), prev = new Map([[id, null]]), queue = [id];
+  let root = id;
+  while (queue.length) {
+    const cur = queue.shift();
+    const parents = (inc.get(cur) ?? []).filter(p => !String(p).startsWith("after:"));
+    if (!parents.length) { root = cur; break; }
+    for (const p of parents) if (!prev.has(p)) { prev.set(p, cur); queue.push(p); }
+  }
+  const chain = [];
+  for (let cur = root; cur != null; cur = prev.get(cur)) chain.push(cur);
+  return chain;
+}
+
+function inspect(id) {
+  const box = $("inspector");
+  const m = id && meta.get(id);
+  if (!m) {
+    box.innerHTML = `<p class="muted" style="margin:0">Select a node to see how it is reached and what it carries.</p>`;
+    return;
+  }
+  const n = m.raw, { out, inc } = neighbours();
+  const typeLabel = { advisory: "Advisory", project: "Project", vulnerable: "Vulnerable version", version: "Version",
+                      fix: "After the fix", after: "After the fix", clear: "Fix outcome", unresolved: "Fix outcome" }[m.role]
+                    ?? (n.entity_type ?? "Node");
+  const explorable = !m.after && !n.group && !String(n.entity_id).startsWith("project:");
+  const acts = explorable ? `<div class="acts">
+      <button type="button" data-act="explore" data-id="${esc(n.entity_id)}">Explore from here</button>
+      <button type="button" data-act="ask" data-id="${esc(n.entity_id)}" data-role="${m.role}">Ask about it</button></div>` : "";
+  let body = "";
+  if (m.after) {
+    const p = m.after.plan;
+    body = m.after.of
+      ? `<p class="muted" style="margin:0">${m.after.changed ? `${esc(shortId(n.entity_id))} replaces ${esc(shortId(m.after.of))} in the fix for ${esc(shortId(p.version_id))}.`
+                                                               : `${esc(shortId(n.entity_id))} stays as it is.`}</p>`
+      : `<p class="muted" style="margin:0">${p.resolved ? "The plan clears" : "The plan does not fully clear"} ${p.advisories.length} advisor${p.advisories.length === 1 ? "y" : "ies"} on ${esc(shortId(p.version_id))}. "Clear" means against this dataset's advisories.</p>`;
+  } else if (n.group) {
+    body = `<p class="muted" style="margin:0">On ${esc(shortId(n.group.version))}, worst first:</p>
+      ${n.group.members.map(a => `<div class="src">${sevChip(a.severity)}<span>
+        <a class="mono" style="font-size:12px" href="${osvUrl(a.entity_id)}" target="_blank" rel="noopener">${esc(a.entity_id)}</a>
+        <span class="muted">${esc((a.cves ?? []).join(" "))}</span><br><span style="color:var(--text2)">${esc(a.summary ?? "")}</span></span></div>`).join("")}`;
+  } else if (m.role === "advisory") {
+    const versions = (inc.get(id) ?? []).filter(v => !String(v).startsWith("after:"));
+    body = `${n.summary ? `<p style="margin:0; font: 500 17px/1.35 var(--serif)">${esc(n.summary)}</p>` : ""}
+      <div class="facts">
+        <div><span>Severity</span>${sevChip(n.severity)}</div>
+        <div><span>Aliases</span><b>${esc((n.cves ?? []).join(", ") || "none")}</b></div>
+        <div><span>Versions in view</span><b>${versions.length}</b></div>
+        <div><span>Record</span><b><a href="${osvUrl(id)}" target="_blank" rel="noopener">osv.dev ↗</a></b></div>
+      </div>`;
+  } else {
+    const advisories = (out.get(id) ?? []).filter(t => meta.get(t)?.role === "advisory");
+    const plan = (view?.fixPlans ?? []).find(p => p.version_id === id);
+    const advisoryIds = advisories.flatMap(t => meta.get(t).raw.group?.members.map(a => a.entity_id) ?? [t]);
+    body = `<div class="facts">
+        <div><span>Depends on (in view)</span><b>${(out.get(id) ?? []).filter(t => !advisories.includes(t) && !String(t).startsWith("after:")).length}</b></div>
+        <div><span>Depended on by</span><b>${(inc.get(id) ?? []).length}</b></div>
+        <div><span>Advisories</span><b style="${advisoryIds.length ? "color:var(--vuln)" : ""}">${advisoryIds.length}</b></div>
+        <div><span>Fix</span><b style="${plan ? "color:var(--fix)" : ""}">${plan ? esc(plan.target_version ? `→ ${plan.target_version}` : plan.status) : "—"}</b></div>
+      </div>
+      ${advisoryIds.length ? `<div class="chainline">${advisoryIds.map(a => `<span class="v">${esc(a)}</span>`).join(", ")}</div>` : ""}`;
+  }
+  const chain = m.after ? [] : chainTo(id);
+  const chainHtml = chain.length > 1 ? `<div><p class="eyebrow" style="margin-bottom:2px">Reached through</p>
+    <div class="chainline">${chain.map(c => { const r = meta.get(c)?.role;
+      return `<span class="${r === "vulnerable" || r === "advisory" ? "v" : ""}">${esc(shortId(c))}</span>`; }).join(" → ")}</div></div>` : "";
+  box.innerHTML = `<div class="ins-head"><span class="eyebrow">${esc(typeLabel)}</span>
+      <span class="name">${esc(shortId(n.canonical_name || n.entity_id))}</span>${acts}</div>${body}${chainHtml}`;
+}
+
+$("inspector").addEventListener("click", ev => {
+  const b = ev.target.closest("button[data-act]");
+  if (!b) return;
+  const id = shortId(b.dataset.id);
+  if (b.dataset.act === "explore") { setMode("explore"); $("entity").value = id; explore(id); return; }
+  const q = b.dataset.role === "advisory" ? `Which projects are affected by ${id}?`
+          : b.dataset.role === "project" ? `List the known vulnerabilities anywhere in the dependency tree of ${id}.`
+          : `Which projects pull in ${id}, and is it vulnerable?`;
+  setMode("ask"); $("q").value = q; $("q").focus();
+});
+
+for (const b of document.querySelectorAll("[data-layout]")) b.addEventListener("click", () => {
+  layout = b.dataset.layout;
+  for (const o of document.querySelectorAll("[data-layout]")) o.setAttribute("aria-pressed", o === b);
+  if (view) renderGraph();
+});
+$("fix-toggle").addEventListener("click", () => {
+  showFix = !showFix;
+  $("fix-toggle").setAttribute("aria-pressed", showFix);
+  renderGraph();
+});
+// Full screen covers the whole graph panel (controls, legend, inspector). Esc leaves it either way.
+const panel = $("graph-panel"), fsBtn = $("fullscreen");
+const isFull = () => document.fullscreenElement === panel || panel.classList.contains("expanded");
+function syncFullscreen() {
+  const full = isFull();
+  fsBtn.setAttribute("aria-pressed", full);
+  fsBtn.querySelector("span").textContent = full ? "Exit full screen" : "Full screen";
+  document.body.classList.toggle("graph-expanded", panel.classList.contains("expanded"));
+  requestAnimationFrame(() => { network?.redraw(); network?.fit({ animation: false }); });
+}
+fsBtn.addEventListener("click", async () => {
+  if (isFull()) {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    panel.classList.remove("expanded");
+  } else if (panel.requestFullscreen) {
+    try { await panel.requestFullscreen(); } catch { panel.classList.add("expanded"); }
+  } else {
+    panel.classList.add("expanded");
+  }
+  syncFullscreen();
+});
+document.addEventListener("fullscreenchange", syncFullscreen);
+document.addEventListener("keydown", ev => {
+  if (ev.key === "Escape" && panel.classList.contains("expanded")) { panel.classList.remove("expanded"); syncFullscreen(); }
+});
+
+for (const b of document.querySelectorAll("[data-zoom]")) b.addEventListener("click", () => {
+  if (!network) return;
+  if (b.dataset.zoom === "fit") return network.fit({ animation: true });
+  network.moveTo({ scale: network.getScale() * (b.dataset.zoom === "in" ? 1.25 : 0.8), animation: true });
+});
+function focusNode(id) {
+  if (!nodesDS?.get(id)) return;
+  select(id);
+  network.focus(id, { scale: Math.max(network.getScale(), 0.9), animation: true });
+}
+
+// ---------- shared renderers ----------
+// Plan steps and facts are plain text with `code` spans.
+const stepHtml = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
+const STATUS = { in_range: "refresh the lockfile", split: "split copies", blocked: "blocked → upgrade dependents",
+                 no_fix: "no fixed release", upgrade_root: "upgrade the project", edit_manifest: "edit package.json",
+                 remove_dependency: "remove the dependency", no_metadata: "no release data", cycle: "mutual constraint" };
+
+function planCard(p) {
+  const pkg = shortId(p.version_id).replace(/@[^@]+$/, "");
+  const target = p.target_version ? ` → <code style="color:var(--fix)">${esc(pkg)}@${esc(p.target_version)}</code>` : "";
+  const sevs = {};
+  for (const a of p.advisories) sevs[a.severity ?? "UNLABELED"] = (sevs[a.severity ?? "UNLABELED"] ?? 0) + 1;
+  const override = p.override?.version
+    ? `<li class="fallback"><div style="flex:1; min-width:0">Fallback if the dependents can't move: an npm override${
+        p.override.outside_ranges?.length ? `, outside the range ${esc(p.override.outside_ranges.map(shortId).join(", "))} declares` : ""}.
+        ${cmdBlock(`"overrides": { "${p.override.package}": "${p.override.version}" }`)}</div></li>` : "";
+  return `<article class="card plan">
+    <div class="plan-head">
+      <span class="eyebrow">Fix plan</span>
+      <span class="tag ${p.resolved ? "ok" : "bad"}">${esc(STATUS[p.status] ?? p.status.replaceAll("_", " "))}</span>
+      ${p.resolved ? "" : `<span class="tag bad">not fully resolved</span>`}
+      ${p.dev_only ? `<span class="tag">dev</span>` : ""}
+      <button type="button" class="redraw" data-focus="${esc(p.version_id)}" style="margin-left:auto; border:0; background:none; padding:0; font-size:12px; text-decoration:underline; color:var(--text2)">show in graph</button>
+    </div>
+    <div style="font-size:14px"><code>${esc(shortId(p.version_id))}</code>${target}
+      <span style="margin-left:6px">${Object.entries(sevs).map(([s, n]) => sevChip(s, n)).join(" ")}</span></div>
+    <ol class="steps">${p.actions.map(a => `<li><div style="flex:1; min-width:0">${stepHtml(a)}</div></li>`).join("")}${override}</ol>
+  </article>`;
+}
+
+function cmdBlock(text) {
+  return `<div class="cmd"><code>${esc(text)}</code><button type="button" class="copy" data-copy="${esc(text)}" aria-label="Copy">${COPY_ICON}</button></div>`;
+}
+
+document.addEventListener("click", ev => {
+  const copy = ev.target.closest("[data-copy]");
+  if (copy) {
+    navigator.clipboard?.writeText(copy.dataset.copy).then(() => {
+      copy.innerHTML = "✓";
+      setTimeout(() => { copy.innerHTML = COPY_ICON; }, 1200);
+    });
+    return;
+  }
+  const focus = ev.target.closest("[data-focus]");
+  if (focus) focusNode(focus.dataset.focus);
+});
+
+// ---------- ask ----------
+// The model writes Markdown: [G#]/[A#] markers become links to the sources below, then marked renders it and
+// DOMPurify sanitizes it. Without either CDN script the answer is escaped plain text.
+function answerHtml(text, tid) {
+  if (typeof marked === "undefined" || typeof DOMPurify === "undefined") {
+    return `<div class="answer plain">${esc(text)}</div>`;
+  }
+  const linked = text.replace(/\[((?:[GA]\d+)(?:\s*[,;]\s*[GA]\d+)*)\]/g, (_, group) =>
+    group.split(/\s*[,;]\s*/).map(m => `<a class="cite${m[0] === "A" ? " a" : ""}" href="#${tid}-${m}">${m}</a>`).join(" "));
+  return `<div class="answer">${DOMPurify.sanitize(marked.parse(linked))}</div>`;
+}
+
+let turns = 0;
+const results = new Map();
+
+function turnHtml(r, tid) {
+  const c = r.citations ?? {}, k = r.checks ?? {};
+  const flagged = [...(k.ungrounded_ids ?? []), ...(k.ungrounded_versions ?? []), ...(k.unknown_markers ?? [])];
+  const pattern = r.executed_pattern ?? r.pattern;
+  const facts = c.graph_facts ?? [], chunks = c.chunks ?? [], advisories = c.advisories ?? [];
+  const cited = new Set(k.cited_markers ?? []);
+  const factRow = f => `<div class="src" id="${tid}-${esc(f.marker)}"><span class="cite">${esc(f.marker)}</span><span class="fact">${
+    esc(f.fact).replace(/\[VULNERABLE:[^\]]*\]/g, m => `<span style="color:var(--vuln)">${m}</span>`)}</span></div>`;
+  const shownFacts = facts.filter(f => cited.has(f.marker)), otherFacts = facts.filter(f => !cited.has(f.marker));
+  const chunkRow = ch => `<div class="src" id="${tid}-${esc(ch.marker)}"><span class="cite a">${esc(ch.marker)}</span><span>
+      <a class="mono" style="font-size:12px" href="${esc(ch.url ?? osvUrl(ch.advisory))}" target="_blank" rel="noopener">${esc(ch.advisory)}</a>
+      <br><span style="color:var(--text2)">${esc(ch.snippet)}…</span></span></div>`;
+  const advRow = a => `<div class="src"><span>${sevChip(a.severity)}</span><span>
+      <a class="mono" style="font-size:12px" href="${esc(a.url ?? osvUrl(a.id))}" target="_blank" rel="noopener">${esc(a.id)}</a>
+      <span class="muted">${esc(a.aliases.filter(x => x.startsWith("CVE-")).join(" "))}</span>
+      <br><span style="color:var(--text2)">${esc(a.summary)}</span></span></div>`;
+  const plans = r.fix_plans ?? [];
+  return `
+    <div class="meta">
+      <span class="chip">${esc(r.executed_route)}</span>${pattern ? `<span class="chip">${esc(pattern)}</span>` : ""}
+      ${flagged.length ? `<span class="chip bad">not in evidence: ${esc(flagged.join(", "))}</span>`
+                       : `<span class="chip ok">✓ grounded</span>`}
+      ${r.subgraph?.nodes?.length ? `<button type="button" class="redraw" data-turn="${tid}">show graph</button>` : ""}
+      ${r.classification_reasoning ? `<span class="reason">${esc(r.classification_reasoning)}</span>` : ""}
+    </div>
+    ${(r.warnings ?? []).map(w => `<div class="warn">${esc(w)}</div>`).join("")}
+    <article class="card">${answerHtml(r.answer, tid)}</article>
+    ${plans.slice(0, 3).map(planCard).join("")}
+    ${plans.length > 3 ? `<p class="muted" style="margin:0">and ${plans.length - 3} more fix plans</p>` : ""}
+    <div class="sources">
+      <p class="eyebrow">Sources</p>
+      ${r.totals?.length ? `<details><summary>Exact totals (${r.totals.length})</summary><ul class="totals">${r.totals.map(t => `<li>${esc(t)}</li>`).join("")}</ul></details>` : ""}
+      ${shownFacts.map(factRow).join("")}
+      ${chunks.map(chunkRow).join("")}
+      ${otherFacts.length ? `<details><summary>${shownFacts.length ? "Other graph facts" : "Graph facts"} given to the model (${otherFacts.length})</summary>${otherFacts.map(factRow).join("")}</details>` : ""}
+      ${advisories.length ? `<details><summary>Advisories (${advisories.length})</summary>${advisories.slice(0, 25).map(advRow).join("")}</details>` : ""}
+    </div>`;
+}
+
+function graphForAnswer(r, tid) {
+  const pattern = r.executed_pattern ?? r.pattern;
+  showGraph({
+    subgraph: r.subgraph, fixPlans: r.fix_plans ?? [],
+    caption: r.subgraph.nodes.length ? `Chains behind “${r.query}” (${r.executed_route}${pattern ? " / " + pattern : ""})` : "",
+    emptyText: "This answer comes from advisory text, so there is no dependency chain to draw.",
+  });
+}
+
+$("thread").addEventListener("click", ev => {
+  const b = ev.target.closest("[data-turn]");
+  if (b && results.has(b.dataset.turn)) graphForAnswer(results.get(b.dataset.turn), b.dataset.turn);
+  const cite = ev.target.closest("a.cite");
+  if (cite) {
+    const target = document.getElementById(cite.getAttribute("href").slice(1));
+    if (!target) return;
+    ev.preventDefault();
+    target.closest("details")?.setAttribute("open", "");
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    target.classList.remove("flash"); void target.offsetWidth; target.classList.add("flash");
+  }
+});
+
+$("ask").addEventListener("submit", async ev => {
   ev.preventDefault();
-  const query = document.getElementById("q").value.trim();
+  const query = $("q").value.trim();
   if (!query) return;
-  const out = document.getElementById("output"), btn = document.getElementById("ask-btn");
+  const tid = `t${++turns}`, btn = $("ask-btn"), thread = $("thread");
+  const turn = document.createElement("div");
+  turn.className = "turn";
+  turn.innerHTML = `<div class="bubble">${esc(query)}</div>
+    <div class="body"><div class="thinking"><span class="pulse"></span>Routing and retrieving…</div></div>`;
+  thread.querySelector(".intro")?.remove();
+  $("view-ask").classList.add("asked");
+  thread.appendChild(turn);
+  turn.scrollIntoView({ behavior: "smooth", block: "start" });
+  $("q").value = "";
   btn.disabled = true;
-  out.innerHTML = `<p class="muted">Routing and retrieving…</p>`;
   try {
     const r = await call("/query", { method: "POST", headers: { "Content-Type": "application/json" },
                                      body: JSON.stringify({ query }) });
-    const c = r.citations, SHOW = 15;
-    const chains = c.dependency_chains.slice(0, SHOW).map(p => `<li><code>${esc(p)}</code></li>`).join("");
-    const advisories = c.advisories.slice(0, SHOW).map(a => `
-      <li><a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.id)}</a>
-        ${a.aliases.filter(x => x.startsWith("CVE-")).map(esc).join(" ")}
-        <span class="sev" style="color:${SEV_COLORS[a.severity] ?? "inherit"}">${esc(a.severity ?? "unlabeled")}</span>
-        <div class="muted">${esc(a.summary)}</div></li>`).join("");
-    const facts = c.graph_facts.map(f => `<li><strong>[${esc(f.marker)}]</strong> ${esc(f.fact)}</li>`).join("");
-    const chunks = c.chunks.map(ch => `
-      <li><strong>[${esc(ch.marker)}]</strong> <a href="${esc(ch.url)}" target="_blank" rel="noopener">${esc(ch.advisory)}</a>
-        <div class="muted">${esc(ch.snippet)}…</div></li>`).join("");
-    const k = r.checks, flagged = [...k.ungrounded_ids, ...k.ungrounded_versions, ...k.unknown_markers];
-    const pattern = r.executed_pattern ? ` / ${r.executed_pattern}` : "";
-    const more = (list, n) => list.length > n ? `<p class="muted">and ${list.length - n} more</p>` : "";
-    out.innerHTML = `
-      <span class="badge">${esc(r.executed_route + pattern)}</span>
-      <div class="muted">${esc(r.classification_reasoning)}</div>
-      ${r.warnings.map(w => `<div class="warn">${esc(w)}</div>`).join("")}
-      ${flagged.length ? `<div class="warn">Not found in the evidence: ${esc(flagged.join(", "))}</div>` : ""}
-      ${answerHtml(r.answer)}
-      ${r.totals.length ? `<h3>Exact totals</h3><ul>${r.totals.map(t => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
-      ${chains ? `<h3>Dependency chains</h3><ul>${chains}</ul>${more(c.dependency_chains, SHOW)}` : ""}
-      ${advisories ? `<h3>Advisories</h3><ul>${advisories}</ul>${more(c.advisories, SHOW)}` : ""}
-      ${facts ? `<details><summary>Graph facts given to the model (${c.graph_facts.length})</summary><ul>${facts}</ul></details>` : ""}
-      ${chunks ? `<h3>Advisory text</h3><ul>${chunks}</ul>` : ""}`;
-    if (r.subgraph.nodes.length) drawGraph(r.subgraph, `Dependency chains behind this answer (${r.executed_route}${pattern})`);
+    results.set(tid, r);
+    turn.querySelector(".body").outerHTML = turnHtml(r, tid);
+    graphForAnswer(r, tid);
+  } catch (err) {
+    turn.querySelector(".body").innerHTML = `<p class="warn">${esc(err.message)}</p>`;
+  } finally {
+    btn.disabled = false;
+  }
+});
+for (const b of document.querySelectorAll("#ask .suggest button")) b.addEventListener("click", () => {
+  $("q").value = b.textContent;
+  $("ask").requestSubmit();
+});
+
+// ---------- explore ----------
+async function explore(entity) {
+  const depth = Number($("depth").value), out = $("explore-out"), btn = $("explore-btn");
+  btn.disabled = true;
+  try {
+    const r = await call(`/graph/explore?entity=${encodeURIComponent(entity)}&depth=${depth}`);
+    const others = r.matches.slice(1);
+    out.innerHTML = `<div class="card">
+        <p class="eyebrow">Showing</p>
+        <p class="mono" style="margin:4px 0 0; font-size:15px; overflow-wrap:anywhere">${esc(shortId(r.entity_id))}</p>
+        <p class="muted" style="margin:6px 0 0">${r.nodes.length} nodes and ${r.edges.length} edges within ${depth} hop${depth > 1 ? "s" : ""}.
+          Click a node for details, or explore from it.</p>
+      </div>
+      ${others.length ? `<div class="card"><p class="eyebrow">Also matches</p><div class="suggest" style="margin-top:8px">${
+        others.map(m => `<button type="button" data-entity="${esc(m)}">${esc(shortId(m))}</button>`).join("")}</div></div>` : ""}`;
+    showGraph({ subgraph: r, focusId: r.entity_id,
+                caption: `Neighbourhood of ${shortId(r.entity_id)}, ${depth} hop${depth > 1 ? "s" : ""}` });
   } catch (err) {
     out.innerHTML = `<p class="warn">${esc(err.message)}</p>`;
   } finally {
     btn.disabled = false;
   }
+}
+$("explore").addEventListener("submit", ev => {
+  ev.preventDefault();
+  const entity = $("entity").value.trim();
+  if (entity) explore(entity);
+});
+$("explore-out").addEventListener("click", ev => {
+  const b = ev.target.closest("button");
+  if (!b) return;
+  const entity = b.dataset.entity ?? b.textContent;
+  $("entity").value = shortId(entity);
+  explore(entity);
 });
 
-// Plan steps are plain text with `code` spans (npm commands, overrides snippets).
-const stepHtml = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
-const sevChip = (sev, n) =>
-  `<span class="chip" style="background:${SEV_COLORS[sev] ?? "#888"}">${esc(sev)}${n != null ? ` ${n}` : ""}</span>`;
-const shortId = id => String(id).replace(/^npm:/, "").replace(/^project:/, "");
-
+// ---------- scan ----------
 function scanHtml(r, fileName) {
-  const t = r.totals, cov = r.coverage, live = cov.live_osv, rem = r.remediation, SHOW = 25;
-  const header = `
-    <span class="badge">scan</span> <strong>${esc(shortId(r.project.id))}</strong>
-    <span class="muted">from ${esc(fileName)}</span>
-    <p><strong>${t.advisories}</strong> advisories on <strong>${t.vulnerable_versions}</strong> vulnerable versions,
-       up to ${t.max_depth} hops deep${t.dev_only_advisories ? `; ${t.dev_only_advisories} only via devDependencies` : ""}.</p>
-    <div class="chips">${Object.entries(t.by_severity).map(([s, n]) => sevChip(s, n)).join("")}</div>
-    <div class="muted">${cov.checked} of ${cov.versions} installed versions checked against OSV${live
-      ? `; ${live.queried} queried live, ${live.advisories_added} advisories not in the dataset, our matching agrees with OSV on ${live.agree} of ${live.agree + live.only_ours + live.only_osv} pairs`
-      : ""}.</div>
-    ${r.warnings.map(w => `<div class="warn">${esc(w)}</div>`).join("")}`;
-
+  const t = r.totals, cov = r.coverage, live = cov.live_osv, SHOW = 25;
   const seen = new Set(), rows = [];
   for (const row of r.results) {  // one line per advisory, at its first (worst-severity, shallowest) row
     if (seen.has(row.vulnerability_id)) continue;
@@ -216,42 +984,43 @@ function scanHtml(r, fileName) {
     rows.push(row);
   }
   const exposure = rows.slice(0, SHOW).map(row => `
-    <div class="row">
-      <span class="sev" style="color:${SEV_COLORS[row.severity] ?? "inherit"}">${esc(row.severity ?? "UNLABELED")}</span>
-      <a href="${esc(row.source_url ?? "https://osv.dev/vulnerability/" + row.vulnerability_id)}" target="_blank"
-         rel="noopener">${esc(row.vulnerability_id)}</a>
-      ${(row.aliases ?? []).filter(a => a.startsWith("CVE-")).map(esc).join(" ")}
-      ${row.dev_only ? `<span class="tag">dev</span>` : ""}
-      <div>${esc(row.summary)}</div>
-      <div class="chain muted">${row.path.map(shortId).map(esc).join(" → ")}</div>
-    </div>`).join("");
-  const moreRows = rows.length > SHOW ? `<p class="muted">and ${rows.length - SHOW} more advisories</p>` : "";
-
-  let plans = "";
-  if (rem) {
-    const rt = rem.totals;
-    plans = `<h3>Fix plans</h3>
-      <div class="muted">${rt.fully_resolved} of ${rem.total_results} fully resolved${
-        rt.vulnerable_copies > rem.total_results ? ` (the ${rem.total_results} worst of ${rt.vulnerable_copies})` : ""}${
-        rt.releases_fetched ? `; release data fetched for ${rt.releases_fetched} packages` : ""}.
-        "Fixed" means clear of the advisories checked here.</div>` +
-      rem.results.map(p => `
-        <div class="row plan">
-          <strong>${esc(shortId(p.version_id))}</strong> <span class="tag">${esc(p.plan.status.replaceAll("_", " "))}</span>
-          ${p.resolved ? "" : `<span class="tag" style="color:var(--warn)">not fully resolved</span>`}
-          ${p.dev_only ? `<span class="tag">dev</span>` : ""}
-          <span class="muted">${p.advisories.length} advisor${p.advisories.length === 1 ? "y" : "ies"}</span>
-          <ol>${p.actions.map(a => `<li>${stepHtml(a)}</li>`).join("")}</ol>
-        </div>`).join("");
-  }
-  return `${header}
-    ${exposure ? `<h3>Vulnerable dependencies</h3>${exposure}${moreRows}` : `<p>No known vulnerabilities reached.</p>`}
-    ${plans}`;
+    <button type="button" class="adv-row" data-focus="${esc(row.version_id)}">
+      <div class="line1">${sevChip(row.severity)}
+        <span class="mono">${esc(row.vulnerability_id)}</span>
+        <span class="muted">${esc((row.aliases ?? []).filter(a => a.startsWith("CVE-")).join(" "))}</span>
+        ${row.dev_only ? `<span class="tag">dev</span>` : ""}</div>
+      <div class="summary">${esc(row.summary)}</div>
+      <div class="chain">${row.path.map(shortId).map(esc).join(" → ")}</div>
+    </button>`).join("");
+  const rem = r.remediation;
+  const plans = r.fix_plans ?? [];
+  return `<article class="card">
+      <p class="eyebrow">Scan · ${esc(fileName)}</p>
+      <p style="margin:4px 0 0; font: 500 22px var(--serif)">${esc(shortId(r.project.id))}</p>
+      <div class="kpis">
+        <div class="kpi"><span>Advisories</span><strong class="${t.advisories ? "bad" : ""}">${t.advisories}</strong></div>
+        <div class="kpi"><span>Vulnerable versions</span><strong>${t.vulnerable_versions}</strong></div>
+        <div class="kpi"><span>Deepest hop</span><strong>${t.max_depth}</strong></div>
+      </div>
+      <div class="suggest" style="margin-top:10px">${Object.entries(t.by_severity).map(([s, n]) => sevChip(s, n)).join("")}
+        ${t.dev_only_advisories ? `<span class="tag">${t.dev_only_advisories} only via devDependencies</span>` : ""}</div>
+      <p class="muted" style="margin:10px 0 0">${cov.checked} of ${cov.versions} installed versions checked against OSV${live
+        ? `; ${live.queried} queried live, ${live.advisories_added} advisories not in the dataset; our matching agrees with OSV on ${live.agree} of ${live.agree + live.only_ours + live.only_osv} pairs`
+        : ""}.</p>
+      ${r.warnings.map(w => `<div class="warn">${esc(w)}</div>`).join("")}
+    </article>
+    ${exposure ? `<div><p class="eyebrow">Vulnerable dependencies</p>${exposure}
+       ${rows.length > SHOW ? `<p class="muted">and ${rows.length - SHOW} more advisories</p>` : ""}</div>`
+               : `<p>No known vulnerabilities reached.</p>`}
+    ${rem ? `<p class="muted" style="margin:0">${rem.totals.fully_resolved} of ${rem.total_results} fix plans fully resolve their copy${
+        rem.totals.releases_fetched ? `; release data fetched for ${rem.totals.releases_fetched} packages` : ""}. "Fixed" means clear of the advisories checked here.</p>
+      ${plans.map(planCard).join("")}
+      ${rem.total_results > plans.length ? `<p class="muted" style="margin:0">and ${rem.total_results - plans.length} more fix plans</p>` : ""}` : ""}`;
 }
 
 async function scanFile(file) {
-  const out = document.getElementById("output"), btn = document.getElementById("scan-btn");
-  const live = document.getElementById("scan-live").checked;
+  setMode("scan");
+  const out = $("scan-out"), btn = $("scan-btn"), live = $("scan-live").checked;
   let lock;
   try {
     lock = JSON.parse(await file.text());
@@ -260,16 +1029,15 @@ async function scanFile(file) {
     return;
   }
   btn.disabled = true;
-  out.innerHTML = `<p class="muted">Scanning ${esc(file.name)}${live
-    ? " with live OSV and registry lookups (the first scan of a new lockfile can take a few seconds)" : ""}…</p>`;
+  out.innerHTML = `<div class="thinking"><span class="pulse"></span>Scanning ${esc(file.name)}${live
+    ? " with live OSV and registry lookups (a new lockfile can take a few seconds)" : ""}…</div>`;
   try {
     const r = await call(`/scan?live=${live}`, { method: "POST", headers: { "Content-Type": "application/json" },
                                                  body: JSON.stringify(lock) });
     out.innerHTML = scanHtml(r, file.name);
-    if (r.subgraph.nodes.length) {
-      drawGraph(r.subgraph, `Vulnerable dependency chains in ${shortId(r.project.id)}` +
-                (r.total_results > 40 ? " (the 40 worst rows)" : ""), r.project.id);
-    }
+    showGraph({ subgraph: r.subgraph, fixPlans: r.fix_plans ?? [], focusId: r.project.id,
+                caption: `Vulnerable chains in ${shortId(r.project.id)}${r.total_results > 40 ? " (the 40 worst rows)" : ""}`,
+                emptyText: "No vulnerable chains to draw." });
   } catch (err) {
     out.innerHTML = `<p class="warn">${esc(err.message)}</p>`;
   } finally {
@@ -277,35 +1045,22 @@ async function scanFile(file) {
   }
 }
 
-const fileInput = document.getElementById("scan-file");
-document.getElementById("scan-btn").addEventListener("click", () => fileInput.click());
+const fileInput = $("scan-file");
+$("scan-btn").addEventListener("click", () => fileInput.click());
 fileInput.addEventListener("change", () => {
   if (fileInput.files[0]) scanFile(fileInput.files[0]);
   fileInput.value = "";  // so choosing the same file again re-scans it
 });
-const dropZone = document.querySelector("main section");
-dropZone.addEventListener("dragover", ev => { ev.preventDefault(); dropZone.classList.add("dragover"); });
-dropZone.addEventListener("dragleave", ev => {
-  if (!dropZone.contains(ev.relatedTarget)) dropZone.classList.remove("dragover");
-});
-dropZone.addEventListener("drop", ev => {
+document.addEventListener("dragover", ev => { ev.preventDefault(); document.body.classList.add("dragover"); });
+document.addEventListener("dragleave", ev => { if (!ev.relatedTarget) document.body.classList.remove("dragover"); });
+document.addEventListener("drop", ev => {
   ev.preventDefault();
-  dropZone.classList.remove("dragover");
+  document.body.classList.remove("dragover");
   if (ev.dataTransfer.files[0]) scanFile(ev.dataTransfer.files[0]);
 });
 
-document.getElementById("explore").addEventListener("submit", async ev => {
-  ev.preventDefault();
-  const entity = document.getElementById("entity").value.trim();
-  if (!entity) return;
-  try {
-    const r = await call(`/graph/explore?entity=${encodeURIComponent(entity)}&depth=1`);
-    const others = r.matches.length > 1 ? ` (also matches ${r.matches.slice(1).join(", ")})` : "";
-    drawGraph(r, `Neighborhood of ${r.entity_id}, 1 hop${others}`, r.entity_id);
-  } catch (err) {
-    document.getElementById("graph-caption").textContent = err.message;
-  }
-});
+// Theme changes recolour the graph (its colours are read from the CSS variables at draw time).
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (view) renderGraph(); });
 </script>
 </body>
 </html>

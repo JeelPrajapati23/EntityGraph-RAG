@@ -8,7 +8,7 @@ its threadpool instead of stalling the event loop.
 Endpoints:
     GET  /                 chat + graph-visualization page
     GET  /health           graph / advisory-index sizes
-    POST /query            routed, cited answer + the subgraph it traversed
+    POST /query            routed, cited answer + the subgraph it traversed (+ fix plans)
     POST /scan             exposure + fix plans for an uploaded package-lock.json
     GET  /graph/explore    ego-subgraph around a package, version or advisory
 
@@ -31,7 +31,7 @@ from ..depgraph.synthesis import synthesize_answer
 from ..graph import ego_subgraph
 from ..npm.upload import load_upload
 from .resources import Resources, load_resources
-from .views import result_subgraph
+from .views import fix_plans, plan_summaries, result_subgraph
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -81,6 +81,7 @@ def create_app(resources: Resources | None = None, loader: Callable[[], Resource
             "executed_pattern": result["executed_pattern"],
             "classification_reasoning": result["classification_reasoning"],
             "subgraph": result_subgraph(result, res.ctx.store),
+            "fix_plans": fix_plans(result),
         }
 
     @app.post("/scan")
@@ -97,7 +98,8 @@ def create_app(resources: Resources | None = None, loader: Callable[[], Resource
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e))
         result = run_scan(res.ctx, upload, registry=res.registry if live else None)
-        return {**result, "subgraph": result_subgraph(result, upload.store)}
+        plans = plan_summaries(result["remediation"]["results"]) if result["remediation"] else []
+        return {**result, "subgraph": result_subgraph(result, upload.store), "fix_plans": plans}
 
     @app.get("/graph/explore")
     def graph_explore(

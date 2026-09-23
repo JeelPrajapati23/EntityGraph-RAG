@@ -9,13 +9,22 @@ endpoints during the breadth-first walk still appears once.
 from .store import GraphStore
 
 
-def _node(store: GraphStore, entity_id: str) -> dict:
+# Node properties the frontend shows (advisory severity and title, whether a version is a lockfile root).
+DISPLAY_PROPERTIES = ("severity", "summary", "is_root")
+
+
+def graph_node(store: GraphStore, entity_id: str) -> dict:
     entity = store.get_entity(entity_id) or {}
-    return {
+    properties = entity.get("properties") or {}
+    node = {
         "entity_id": entity_id,
         "canonical_name": entity.get("canonical_name", entity_id),
         "entity_type": entity.get("entity_type"),
     }
+    node.update({key: properties[key] for key in DISPLAY_PROPERTIES if properties.get(key) is not None})
+    if cves := [a for a in entity.get("aliases", []) if a.startswith("CVE-")]:
+        node["cves"] = cves
+    return node
 
 
 def ego_subgraph(store: GraphStore, entity_id: str, *, depth: int = 1, max_nodes: int = 200) -> dict:
@@ -52,4 +61,4 @@ def ego_subgraph(store: GraphStore, entity_id: str, *, depth: int = 1, max_nodes
                 }
         frontier = next_frontier
 
-    return {"nodes": [_node(store, node_id) for node_id in sorted(visited)], "edges": list(edges.values())}
+    return {"nodes": [graph_node(store, node_id) for node_id in sorted(visited)], "edges": list(edges.values())}
