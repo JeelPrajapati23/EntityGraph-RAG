@@ -14,11 +14,15 @@ from groq import Groq
 from ..depgraph import DepGraphContext, load_context
 from ..extraction.schema import Schema, load_schema
 from ..llm_client import build_client
+from ..npm.live_releases import RegistryClient
+from ..npm.osv import OsvClient
 from ..npm.advisory_index import DEFAULT_VARIANT, index_path
 from ..retrieval import build_embedding_client
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_DEPGRAPH_DIR = REPO_ROOT / "data" / "processed" / "depgraph"
+LIVE_OSV_DIR = REPO_ROOT / "data" / "raw" / "osv" / "live"  # kept apart from the corpus's osv/vulns
+LIVE_RELEASES_DIR = REPO_ROOT / "data" / "raw" / "npm" / "live_releases"  # and from npm/releases
 
 
 @dataclass
@@ -26,6 +30,8 @@ class Resources:
     ctx: DepGraphContext
     schema: Schema
     client: Groq
+    osv: OsvClient | None = None  # live OSV lookups for /scan; None scans against the graph only
+    registry: RegistryClient | None = None  # live release metadata for /scan's fix plans
 
 
 def load_resources(depgraph_dir: Path = DEFAULT_DEPGRAPH_DIR, variant: str = DEFAULT_VARIANT) -> Resources:
@@ -41,4 +47,6 @@ def load_resources(depgraph_dir: Path = DEFAULT_DEPGRAPH_DIR, variant: str = DEF
         ctx=load_context(depgraph_dir, build_embedding_client(), variant),
         schema=load_schema(),
         client=build_client(),
+        osv=OsvClient(LIVE_OSV_DIR),
+        registry=RegistryClient(LIVE_RELEASES_DIR),
     )

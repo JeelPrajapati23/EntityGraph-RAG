@@ -137,7 +137,8 @@ def test_scan_reports_exposure_and_subgraph_for_an_uploaded_lockfile(scan_client
 
     assert body["project"]["id"] == "project:my-app@0.1.0" and body["total_results"] == 1
     assert body["results"][0]["path"] == ["project:my-app@0.1.0", *PATH]
-    assert body["coverage"] == {"versions": 2, "checked": 2, "unchecked": 0, "unchecked_examples": []}
+    assert body["coverage"] == {"versions": 2, "checked": 2, "unchecked": 0, "unchecked_examples": [],
+                                "live_osv": None}
     assert body["remediation"] is None  # no release metadata in this fixture
     assert {(e["source"], e["relation"]) for e in body["subgraph"]["edges"]} == {
         ("project:my-app@0.1.0", "DEPENDS_ON"), (PATH[0], "DEPENDS_ON"), (PATH[1], "HAS_VULNERABILITY")}

@@ -21,6 +21,8 @@ BASE_EDGES = [
      "properties": {"ranges": [{"type": "SEMVER", "events": [{"introduced": "0"}, {"fixed": "1.0.2"}]}], "versions": []}},
     {"subject_id": "npm:lib@1.0.0", "relation": "HAS_VULNERABILITY", "object_id": "GHSA-a", "source_doc_id": "GHSA-a",
      "properties": {"lockfile_doc_ids": ["lockfile:npm:other@1.0.0"]}},
+    {"subject_id": "GHSA-a", "relation": "FIXED_IN", "object_id": "npm:lib@1.0.2", "source_doc_id": "GHSA-a",
+     "properties": {}},
 ]
 
 
@@ -64,7 +66,7 @@ def test_upload_edges_and_coverage():
     assert upload.unchecked == ["mid@1.0.0", "tool@2.0.0"]
     assert upload.dev_only == {"npm:tool@2.0.0"}
     # The base graph is untouched.
-    assert (base.node_count(), base.edge_count()) == (3, 2)
+    assert (base.node_count(), base.edge_count()) == (4, 3)
 
 
 def test_overlay_entity_falls_back_to_base_over_implicit_nodes():
@@ -115,8 +117,18 @@ def test_scan_flags_missing_release_metadata():
     store = base_store()
     result = run_scan(context(store, Releases({})), load_upload(store, lockfile()))
     [row] = result["remediation"]["results"]
-    assert "lib" in row["incomplete"] and not row["resolved"]
+    # No version list for lib itself: no plan, just the advisories' own fixed versions.
+    assert row["plan"]["status"] == "no_metadata" and row["incomplete"] == ["lib"] and not row["resolved"]
+    assert "no upgrade plan" in row["actions"][0] and "1.0.2" in row["actions"][0]
     assert any("release metadata missing" in w for w in result["warnings"])
+
+    # lib is known but mid, a blocking dependent, is not: planned, and marked incomplete.
+    rel = releases()
+    del rel.packages["mid"]
+    result = run_scan(context(store, rel), load_upload(store, lockfile(mid_lib="1.0.0")))
+    [row] = result["remediation"]["results"]
+    assert row["plan"]["status"] == "blocked" and row["incomplete"] == ["mid"] and not row["resolved"]
+    assert row["actions"][0].startswith("Release metadata for mid is missing")
 
 
 def test_scan_without_releases_skips_plans():
@@ -142,3 +154,107 @@ def test_workspaces_and_missing_dependencies_warn():
     warnings = load_upload(base_store(), lock).warnings
     assert any("workspace packages" in w and "packages/web" in w for w in warnings)
     assert any("ghost" in w for w in warnings)
+
+
+# A live OSV record the graph lacks: GHSA-m (CVE-9, CRITICAL) affects mid < 1.0.5.
+LIVE_RECORD = {
+    "id": "GHSA-m", "aliases": ["CVE-9"], "summary": "mid is bad", "modified": "2026-01-01T00:00:00Z",
+    "database_specific": {"severity": "CRITICAL"},
+    "affected": [{"package": {"ecosystem": "npm", "name": "mid"},
+                  "ranges": [{"type": "SEMVER", "events": [{"introduced": "0"}, {"fixed": "1.0.5"}]}]}],
+}
+
+
+class FakeOsv:
+    def __init__(self, matches, records, error=None):
+        self.matches, self.records, self.error, self.queried = matches, records, error, None
+
+    def lookup(self, name_versions):
+        self.queried = set(name_versions)
+        if self.error:
+            raise self.error
+        return self.matches, self.records
+
+
+def test_live_osv_adds_advisories_the_graph_lacks():
+    osv = FakeOsv({("mid", "1.0.0"): {"GHSA-m"}}, {"GHSA-m": LIVE_RECORD})
+    base = base_store()
+    upload = load_upload(base, lockfile(), osv)
+
+    # Only versions outside the corpus are queried; lib@1.0.0 is a corpus version.
+    assert osv.queried == {("mid", "1.0.0"), ("tool", "2.0.0")}
+    assert upload.unchecked == [] and not any("outside this dataset" in w for w in upload.warnings)
+    assert upload.live_osv == {"queried": 2, "matched_versions": 1, "advisories_added": 1, "agree": 1,
+                               "only_ours": 0, "only_osv": 0, "only_ours_examples": [], "only_osv_examples": []}
+    assert upload.store.get_entity("GHSA-m")["properties"]["severity"] == "CRITICAL"
+    assert [e["entity_id"] for e in upload.store.neighbors("GHSA-m", relation="FIXED_IN")] == ["npm:mid@1.0.5"]
+    assert base.get_entity("GHSA-m") is None
+
+    result = run_scan(context(base, releases()), upload)
+    assert result["results"][0]["vulnerability_id"] == "GHSA-m" and result["results"][0]["fixed_in"] == ["npm:mid@1.0.5"]
+    assert result["totals"]["by_severity"] == {"CRITICAL": 1, "HIGH": 1}
+
+
+def test_live_osv_disagreement_is_reported():
+    # OSV says tool@2.0.0 is hit by GHSA-m, but GHSA-m's ranges only cover mid.
+    osv = FakeOsv({("mid", "1.0.0"): {"GHSA-m"}, ("tool", "2.0.0"): {"GHSA-m"}}, {"GHSA-m": LIVE_RECORD})
+    upload = load_upload(base_store(), lockfile(), osv)
+    assert upload.live_osv["only_osv"] == 1 and upload.live_osv["only_osv_examples"] == ["tool@2.0.0 GHSA-m"]
+    assert any("disagree on 1" in w for w in upload.warnings)
+
+
+def test_live_osv_failure_falls_back_to_the_graph():
+    import requests
+    osv = FakeOsv({}, {}, error=requests.ConnectionError("offline"))
+    upload = load_upload(base_store(), lockfile(), osv)
+    assert upload.live_osv is None and upload.unchecked == ["mid@1.0.0", "tool@2.0.0"]
+    assert any("live OSV lookup failed" in w for w in upload.warnings)
+
+
+def test_no_live_lookup_when_every_version_is_in_the_corpus():
+    osv = FakeOsv({}, {})
+    lock = {"lockfileVersion": 3, "packages": {"": {"name": "app", "dependencies": {"lib": "^1.0.0"}},
+                                               "node_modules/lib": {"version": "1.0.0"}}}
+    assert load_upload(base_store(), lock, osv).live_osv is None and osv.queried is None
+
+
+class FakeRegistry:
+    """Serves release entries from `packages`; anything else fails like a 404."""
+
+    def __init__(self, packages):
+        self.packages, self.calls = packages, []
+
+    def fetch(self, names):
+        self.calls.append(sorted(names))
+        return ({n: self.packages[n] for n in names if n in self.packages},
+                {n: "HTTPError: 404" for n in names if n not in self.packages})
+
+
+def test_registry_fills_missing_release_metadata_round_by_round():
+    full = releases()
+    full.packages["mid"] = releases().packages["mid"] | {"versions": ["1.0.0", "1.1.0"], "manifests": {
+        "1.0.0": {"dependencies": {"lib": "1.0.0"}, "deprecated": None},
+        "1.1.0": {"dependencies": {"lib": "^1.0.2"}, "deprecated": None}}}
+    # Round 1 has neither lib nor mid. Planning lib needs mid only once lib's own metadata is there.
+    store = base_store()
+    registry = FakeRegistry(full.packages)
+    ctx = context(store, Releases({}))
+    result = run_scan(ctx, load_upload(store, lockfile(mid_lib="1.0.0")), registry=registry)
+
+    [row] = result["remediation"]["results"]
+    assert registry.calls == [["lib"], ["mid"]]
+    assert row["plan"]["status"] == "blocked" and row["resolved"] and row["incomplete"] == []
+    assert any('mid 1.0.0 -> 1.1.0' in step for step in row["actions"])
+    assert result["remediation"]["totals"]["releases_fetched"] == 2
+    assert ctx.releases.packages == {}  # the shared context is not modified
+
+
+def test_registry_failures_are_warned_and_not_retried():
+    store = base_store()
+    registry = FakeRegistry({})
+    result = run_scan(context(store, Releases({})), load_upload(store, lockfile()), registry=registry)
+
+    assert registry.calls == [["lib"]]
+    assert result["remediation"]["results"][0]["plan"]["status"] == "no_metadata"
+    assert any("registry fetch failed for 1 packages" in w and "lib: HTTPError: 404" in w
+               for w in result["warnings"])

@@ -15,29 +15,44 @@ upgrading it.
 
 Coverage: advisories were fetched from OSV for the corpus's exact
 (name, version) pairs. Any other version is matched against the advisories
-we hold for its package, but OSV may know more, so it is reported as
-unchecked.
+we hold for its package, but OSV may know more, so it is unchecked. Given
+an OsvClient, the unchecked versions are queried live: advisories not in
+the graph are added to the overlay (node, AFFECTS_VERSION_RANGE, FIXED_IN)
+and matched by our own range matching against every upload version, the
+same as the corpus build. OSV's own matches are only a cross-check.
 """
 
 import hashlib
 import json
 from dataclasses import dataclass, field
+from typing import Protocol
+
+import requests
 
 from ..graph.overlay import OverlayGraphStore
 from ..graph.store import GraphStore
 from .dependencies import resolve_dependencies, resolve_install_path, split_alias
+from .graph_load import record_to_edge, to_entity
 from .lockfile import NODE_MODULES, check_lockfile, installed_packages
+from .nodes import vulnerability_node
 from .remediation import package_advisories
 from .versions import is_affected, satisfies
-from .vulnerabilities import OSV_WEB, version_id
+from .vulnerabilities import OSV_WEB, build_vulnerability_edges, version_id
 
 UPLOAD_DOC_PREFIX = "lockfile:upload:"
 PROJECT_PREFIX = "project:"
 MAX_PACKAGES = 20_000
 MAX_LISTED = 50
+MAX_EXAMPLES = 10
 # package.json field -> dependency_type. "dev" only occurs on an upload's root edges.
 ROOT_DEPENDENCY_FIELDS = (("dependencies", "prod"), ("devDependencies", "dev"),
                           ("optionalDependencies", "optional"), ("peerDependencies", "peer"))
+
+
+class OsvLookup(Protocol):
+    """npm.osv.OsvClient, or a fake in tests."""
+
+    def lookup(self, name_versions) -> tuple[dict[tuple[str, str], set[str]], dict[str, dict]]: ...
 
 
 @dataclass
@@ -51,10 +66,12 @@ class Upload:
     dev_only: set[str]                   # versions npm installed only for devDependencies
     unchecked: list[str]                 # versions OSV was never queried for (see module docstring)
     warnings: list[str] = field(default_factory=list)
+    live_osv: dict | None = None         # what the live lookup queried, added and disagreed on
 
     def coverage(self) -> dict:
         return {"versions": len(self.install_paths), "checked": len(self.install_paths) - len(self.unchecked),
-                "unchecked": len(self.unchecked), "unchecked_examples": self.unchecked[:MAX_LISTED]}
+                "unchecked": len(self.unchecked), "unchecked_examples": self.unchecked[:MAX_LISTED],
+                "live_osv": self.live_osv}
 
 
 def upload_doc_id(lock: dict) -> str:
@@ -77,8 +94,46 @@ def _affected(version: str, ranges: dict) -> bool:
         return False  # a non-semver version string
 
 
-def load_upload(base: GraphStore, lock: object) -> Upload:
-    """Validate an uploaded lockfile and build its overlay graph. Raises ValueError on a malformed upload."""
+def split_version(vid: str) -> tuple[str, str]:
+    """"npm:@s/b@1.0.0" -> ("@s/b", "1.0.0")."""
+    name, _, version = vid.removeprefix("npm:").rpartition("@")
+    return name, version
+
+
+def add_live_advisories(store: OverlayGraphStore, base: GraphStore, doc_id: str, versions: set[tuple[str, str]],
+                        queried: set[tuple[str, str]], osv_matches: dict[tuple[str, str], set[str]],
+                        records: dict[str, dict]) -> dict:
+    """Add OSV records the graph lacks to the overlay and match them against every upload version.
+
+    Returns the summary kept as Upload.live_osv, including where our
+    matching and OSV's disagree on the queried versions.
+    """
+    new = [records[vuln_id] for vuln_id in sorted(records) if base.get_entity(vuln_id) is None]
+    for record in new:
+        store.upsert_entity(to_entity(vulnerability_node(record)))
+    for row in build_vulnerability_edges(new, {nv: {doc_id} for nv in versions}):
+        store.upsert_edge(record_to_edge(row))
+
+    ours = {(nv, e["entity_id"]) for nv in queried
+            for e in store.neighbors(version_id(*nv), relation="HAS_VULNERABILITY", direction="out")}
+    theirs = {(nv, vuln_id) for nv, ids in osv_matches.items() if nv in queried for vuln_id in ids}
+
+    def examples(pairs: set) -> list[str]:
+        return [f"{name}@{version} {vuln_id}" for (name, version), vuln_id in sorted(pairs)[:MAX_EXAMPLES]]
+
+    return {"queried": len(queried), "matched_versions": sum(nv in queried for nv in osv_matches),
+            "advisories_added": len(new), "agree": len(ours & theirs),
+            "only_ours": len(ours - theirs), "only_osv": len(theirs - ours),
+            "only_ours_examples": examples(ours - theirs), "only_osv_examples": examples(theirs - ours)}
+
+
+def load_upload(base: GraphStore, lock: object, osv: OsvLookup | None = None) -> Upload:
+    """Validate an uploaded lockfile and build its overlay graph. Raises ValueError on a malformed upload.
+
+    With `osv`, versions outside the corpus are looked up on OSV.dev (see
+    the module docstring). A failed lookup is a warning, not an error: the
+    scan falls back to the graph's advisories.
+    """
     check_lockfile(lock, "upload")
     if len(lock["packages"]) > MAX_PACKAGES:
         raise ValueError(f"upload: {len(lock['packages'])} packages; the limit is {MAX_PACKAGES}")
@@ -137,7 +192,7 @@ def load_upload(base: GraphStore, lock: object) -> Upload:
 
     advisories: dict[str, dict] = {}
     for vid in install_paths:
-        pkg_name, pkg_version = vid.removeprefix("npm:").rsplit("@", 1)
+        pkg_name, pkg_version = split_version(vid)
         if pkg_name not in advisories:
             advisories[pkg_name] = package_advisories(base, pkg_name)
         for vuln_id, ranges in advisories[pkg_name].items():
@@ -149,9 +204,21 @@ def load_upload(base: GraphStore, lock: object) -> Upload:
                     "properties": {"lockfile_doc_ids": [doc_id]},
                 })
 
-    unchecked = sorted(vid.removeprefix("npm:") for vid in install_paths
+    unchecked = sorted(vid for vid in install_paths
                        if not (base.get_entity(vid) or {}).get("properties", {}).get("in_tree"))
-    upload = Upload(doc_id, root_id, name, version, store, install_paths, dev_only, unchecked)
+    upload = Upload(doc_id, root_id, name, version, store, install_paths, dev_only, [])
+    if osv is not None and unchecked:
+        queried = {split_version(vid) for vid in unchecked}
+        try:
+            osv_matches, records = osv.lookup(queried)
+        except (requests.RequestException, ValueError) as e:
+            upload.warnings.append(f"live OSV lookup failed ({e.__class__.__name__}: {e}); only the graph's "
+                                   f"advisories were checked")
+        else:
+            upload.live_osv = add_live_advisories(store, base, doc_id, {split_version(v) for v in install_paths},
+                                                  queried, osv_matches, records)
+            unchecked = []
+    upload.unchecked = [vid.removeprefix("npm:") for vid in unchecked]
     workspaces = sorted(p for p in lock["packages"] if p and NODE_MODULES not in p)
     if workspaces:
         upload.warnings.append(f"workspace packages are not scanned, only the root project's dependencies: "
@@ -163,4 +230,8 @@ def load_upload(base: GraphStore, lock: object) -> Upload:
         upload.warnings.append(f"{len(unchecked)} of {len(install_paths)} installed versions are outside this "
                                f"dataset, so OSV was never queried for them; they are matched only against the "
                                f"advisories already held for their package, and others may exist")
+    live = upload.live_osv
+    if live and (live["only_ours"] or live["only_osv"]):
+        upload.warnings.append(f"our range matching and OSV disagree on {live['only_ours'] + live['only_osv']} "
+                               f"(version, advisory) pairs; see coverage.live_osv")
     return upload

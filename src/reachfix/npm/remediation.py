@@ -310,7 +310,7 @@ def summarize(plan: dict) -> dict:
                                                        "version": up["target_version"]}
             elif up["status"] == "remove_dependency":
                 out["unresolved"].append(f"the project declares {p['package']} \"{d['range']}\" directly, and no "
-                                         f"published version is fixed; remove or replace it")
+                                         f"known release of it is fixed; remove or replace it")
             elif up["status"] == "too_deep":
                 out["unresolved"].append(f"{who} declares {p['package']} \"{d['range']}\"; the upgrade chain is "
                                          f"longer than {MAX_UPGRADE_DEPTH} steps and was not followed")

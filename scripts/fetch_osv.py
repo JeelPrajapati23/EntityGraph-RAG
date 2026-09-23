@@ -22,63 +22,25 @@ Usage:
 
 import argparse
 import json
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
 from reachfix.npm.corpus import corpus_name_versions, read_jsonl
-from reachfix.npm.http import make_session, request_json
-from reachfix.npm.osv import normalize_modified
+from reachfix.npm.http import make_session
+from reachfix.npm.osv import OSV_API, batch_query, fetch_records
 
 ROOT = Path(__file__).resolve().parent.parent
 LOCKFILE_MANIFEST = ROOT / "data" / "raw" / "lockfiles" / "manifest.jsonl"
 OUT_DIR = ROOT / "data" / "raw" / "osv"
 VULN_DIR = OUT_DIR / "vulns"
 
-OSV_API = "https://api.osv.dev/v1"
 OSV_WEB = "https://osv.dev/vulnerability/"
-BATCH_SIZE = 1000  # OSV's documented querybatch limit
-WORKERS = 8
 
 session = make_session()
 
 
-def query_package(name: str, version: str, page_token: str | None = None) -> dict:
-    query = {"package": {"name": name, "ecosystem": "npm"}, "version": version}
-    if page_token:
-        query["page_token"] = page_token
-    return query
-
-
-def batch_query(name_versions: list[tuple[str, str]]) -> dict[tuple[str, str], dict[str, str]]:
-    """(name, version) -> {vuln_id: modified} for every queried version with at least one advisory."""
-    matches: dict[tuple[str, str], dict[str, str]] = {}
-    for start in range(0, len(name_versions), BATCH_SIZE):
-        chunk = name_versions[start:start + BATCH_SIZE]
-        print(f"  querybatch {start + 1}-{start + len(chunk)} of {len(name_versions)}...", flush=True)
-        pending = [(nv, None) for nv in chunk]
-        while pending:
-            body = {"queries": [query_package(n, v, tok) for (n, v), tok in pending]}
-            results = request_json(session, "POST", f"{OSV_API}/querybatch", json=body)["results"]
-            next_pending = []
-            for ((name, version), _), result in zip(pending, results):
-                for vuln in result.get("vulns", []):
-                    matches.setdefault((name, version), {})[vuln["id"]] = vuln["modified"]
-                if result.get("next_page_token"):
-                    next_pending.append(((name, version), result["next_page_token"]))
-            pending = next_pending
-    return matches
-
-
-def fetch_vuln(vuln_id: str, modified: str, refresh: bool) -> tuple[dict, bool]:
-    local_path = VULN_DIR / f"{vuln_id}.json"
-    if local_path.exists() and not refresh:
-        cached = json.loads(local_path.read_text(encoding="utf-8"))
-        if normalize_modified(cached.get("modified", "")) == normalize_modified(modified):
-            return cached, False
-    record = request_json(session, "GET", f"{OSV_API}/vulns/{vuln_id}")
-    local_path.write_text(json.dumps(record, indent=1), encoding="utf-8")
-    return record, True
+def progress(start: int, size: int, total: int) -> None:
+    print(f"  querybatch {start + 1}-{start + size} of {total}...", flush=True)
 
 
 def main() -> None:
@@ -92,17 +54,15 @@ def main() -> None:
     corpus = corpus_name_versions(LOCKFILE_MANIFEST, ROOT)
     name_versions = sorted(corpus)
     print(f"Querying OSV for {len(name_versions)} unique package versions...")
-    matches = batch_query(name_versions)
+    matches = batch_query(session, name_versions, progress)
 
     wanted: dict[str, str] = {}
     for vulns in matches.values():
         wanted.update(vulns)
     print(f"{len(matches)} package versions match {len(wanted)} advisories; fetching records...")
 
-    VULN_DIR.mkdir(parents=True, exist_ok=True)
     fetched_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    with ThreadPoolExecutor(max_workers=WORKERS) as pool:
-        results = list(pool.map(lambda item: (item[0], *fetch_vuln(*item, args.refresh)), sorted(wanted.items())))
+    results = fetch_records(session, VULN_DIR, wanted, args.refresh)
 
     manifest_path = OUT_DIR / "manifest.jsonl"
     previous = {r["doc_id"]: r for r in read_jsonl(manifest_path)} if manifest_path.exists() else {}

@@ -84,14 +84,19 @@ def create_app(resources: Resources | None = None, loader: Callable[[], Resource
         }
 
     @app.post("/scan")
-    def scan(request: Request, lock: dict = Body(description="package-lock.json contents (lockfileVersion 2 or 3)")) -> dict:
-        # No LLM or embedding call: graph walks and remediation planning only.
-        ctx = request.app.state.resources.ctx
+    def scan(
+        request: Request,
+        lock: dict = Body(description="package-lock.json contents (lockfileVersion 2 or 3)"),
+        live: bool = Query(default=True, description="query OSV.dev and the npm registry for what the dataset lacks"),
+    ) -> dict:
+        # No LLM or embedding call. With live, versions outside the dataset are queried on OSV.dev and
+        # missing release metadata is fetched from the npm registry; failures come back as warnings.
+        res: Resources = request.app.state.resources
         try:
-            upload = load_upload(ctx.store, lock)
+            upload = load_upload(res.ctx.store, lock, res.osv if live else None)
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e))
-        result = run_scan(ctx, upload)
+        result = run_scan(res.ctx, upload, registry=res.registry if live else None)
         return {**result, "subgraph": result_subgraph(result, upload.store)}
 
     @app.get("/graph/explore")
