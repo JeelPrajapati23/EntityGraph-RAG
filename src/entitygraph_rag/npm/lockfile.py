@@ -3,8 +3,7 @@
 The `packages` map is keyed by install path ("node_modules/a/node_modules/b"),
 not by dependency depth. npm hoists packages, so the nesting stays shallow
 however deep the logical tree goes. This module only lists what is
-installed. Rebuilding DEPENDS_ON edges from each entry's `dependencies` map
-is Phase 2's job.
+installed. `dependencies.py` rebuilds the DEPENDS_ON edges.
 """
 
 import json
@@ -24,6 +23,7 @@ class InstalledPackage:
     dependencies: dict[str, str] = field(default_factory=dict)
     optional_dependencies: dict[str, str] = field(default_factory=dict)
     peer_dependencies: dict[str, str] = field(default_factory=dict)
+    peer_dependencies_meta: dict[str, dict] = field(default_factory=dict)
 
 
 def load_lockfile(path: Path) -> dict:
@@ -63,6 +63,7 @@ def installed_packages(lock: dict) -> list[InstalledPackage]:
                 dependencies=entry.get("dependencies", {}),
                 optional_dependencies=entry.get("optionalDependencies", {}),
                 peer_dependencies=entry.get("peerDependencies", {}),
+                peer_dependencies_meta=entry.get("peerDependenciesMeta", {}),
             )
         )
     return packages

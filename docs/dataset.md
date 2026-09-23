@@ -105,6 +105,68 @@ to test that matcher against.
   registry socket hang `browser-sync` for minutes. `fetch_lockfiles.py`
   passes `--fetch-timeout=60000 --fetch-retries=4`.
 
+## Ingestion (Phase 2)
+
+```bash
+uv run python scripts/build_dependency_edges.py  # → data/processed/depgraph/{dependency_edges,unresolved_dependencies}.jsonl
+uv run python scripts/build_advisory_chunks.py   # → data/processed/depgraph/advisory_chunks.jsonl
+```
+
+Both read the Phase 1 manifests and fully rewrite their output each run.
+Outputs go under `data/processed/depgraph/` so they don't collide with the
+finance pipeline's `data/processed/` files.
+
+**Dependency edges** (`entitygraph_rag.npm.dependencies`). For each
+dependency an installed package declares, the resolver finds the copy
+Node would load: `<pkg>/node_modules/<dep>` first, then each enclosing
+`node_modules` up to the top. Each edge carries:
+
+- `version_range` (npm-alias prefix stripped) and the verbatim
+  `declared_spec`
+- `dependency_type`: prod / optional / peer
+- `lockfile_doc_ids`, plus `occurrences`, which lists the install paths
+  in every lockfile
+- `registry_check` against the registry's declared dependencies for that
+  version: match / range_differs / type_differs / not_declared /
+  no_registry_data
+
+The registry lists optional deps under both `dependencies` and
+`optionalDependencies`, and a lockfile lists them only under the latter.
+`registry.declared_dependencies` does the same split before the two are
+compared.
+
+**First run (2026-09-23):**
+
+| | |
+|---|---|
+| Declared deps | 11,363 across 20 lockfiles, 11,328 resolved |
+| Version-level edges | 5,983 (5,687 prod, 269 peer, 27 optional) |
+| Registry cross-check | all 5,983 `match`. The registry declares no dep that a lockfile entry omits |
+| Unresolved | 35, all peers: 27 marked optional in `peerDependenciesMeta`, and 8 required `react`/`react-dom` peers in the `next` tree (`--legacy-peer-deps` does not install peers) |
+| Reachability | every installed package in every lockfile is reachable from its root |
+| Advisory chunks | 383 from 295 advisories (55 split). Median 157 words. `MAL-2023-462` skipped |
+
+**Gotcha: version-level edges can merge different install paths.** A
+version installed at two paths can resolve the same dependency to two
+different versions. The one case in the corpus is `http-errors@1.6.3` in
+`browser-sync`, which gets `statuses@1.5.0` under `serve-index/` and
+`statuses@1.4.0` under `send/`. Both edges are correct, but a version-level
+traversal can combine them into a path no install actually has. Edges are
+also merged across lockfiles, so traversals from one root should follow
+only edges whose `lockfile_doc_ids` include that root's lockfile. Where
+exact paths matter, `occurrences` has them.
+
+**Advisory chunks** (`entitygraph_rag.npm.advisory`). `details` is
+markdown. It is split into paragraphs at blank lines (never inside a
+fenced code block), and the paragraphs are packed into chunks of at most
+450 words. Packing runs across headings, and each heading stays glued to
+the paragraph after it. The first attempt split at every heading instead,
+which gave 1,026 chunks, many of them two-line "Patches" sections. Chunk
+ids are `<osv_id>::<index>`, and each chunk carries `source_url` (the
+osv.dev page), `aliases`, `summary`, `severity`, `modified`,
+`affected_packages` and the `sections` it spans. A single block over 450
+words (one 802-word PoC) is kept whole rather than cut.
+
 ## Schema
 
 See [`schema/v2.yaml`](../schema/v2.yaml). Key decisions:

@@ -72,3 +72,18 @@ def trim_packument(packument: dict, wanted_versions: set[str]) -> dict:
         "all_versions": list(versions),
         "versions": kept,
     }
+
+
+def declared_dependencies(version_meta: dict) -> dict[str, dict[str, str]]:
+    """A trimmed version's declared deps, split by type the way a lockfile splits them.
+
+    The registry manifest lists optional deps under both `dependencies` and
+    `optionalDependencies`. A lockfile lists them only under
+    `optionalDependencies`, so they are removed from "prod" here.
+    """
+    optional = version_meta.get("optionalDependencies", {})
+    return {
+        "prod": {k: v for k, v in version_meta.get("dependencies", {}).items() if k not in optional},
+        "optional": dict(optional),
+        "peer": dict(version_meta.get("peerDependencies", {})),
+    }
