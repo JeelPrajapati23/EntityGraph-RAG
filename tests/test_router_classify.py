@@ -3,9 +3,9 @@ from types import SimpleNamespace
 import pytest
 from pydantic import ValidationError
 
-from entitygraph_rag.extraction.schema import load_schema
-from entitygraph_rag.router.classify import ROUTES, build_classification_prompt, build_router_decision_model
-from entitygraph_rag.router.router import FALLBACK_REASONING, classify_query
+from reachfix.extraction.schema import load_schema
+from reachfix.router.classify import ROUTES, build_classification_prompt, build_router_decision_model
+from reachfix.router.router import FALLBACK_REASONING, classify_query
 
 
 @pytest.fixture(scope="module")

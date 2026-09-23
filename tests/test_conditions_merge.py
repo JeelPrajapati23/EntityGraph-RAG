@@ -1,4 +1,4 @@
-from entitygraph_rag.conditions.merge import merge_conditions
+from reachfix.conditions.merge import merge_conditions
 
 
 def condition(osv_id, chunk, i, text, category="input_source", confidence=0.9):

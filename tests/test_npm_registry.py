@@ -1,6 +1,6 @@
-from entitygraph_rag.npm.osv import normalize_modified
-from entitygraph_rag.npm.projects import Project
-from entitygraph_rag.npm.registry import maintainer_usernames, normalize_license, packument_url, trim_packument
+from reachfix.npm.osv import normalize_modified
+from reachfix.npm.projects import Project
+from reachfix.npm.registry import maintainer_usernames, normalize_license, packument_url, trim_packument
 
 PACKUMENT = {
     "name": "follow-redirects",

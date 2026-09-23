@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from entitygraph_rag.evaluation.golden_set import GoldenQuestion, load_golden_set
+from reachfix.evaluation.golden_set import GoldenQuestion, load_golden_set
 
 
 def test_load_golden_set_parses_every_entry(tmp_path):

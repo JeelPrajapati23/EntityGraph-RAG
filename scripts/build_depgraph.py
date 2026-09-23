@@ -18,11 +18,11 @@ Usage:
 import argparse
 from pathlib import Path
 
-from entitygraph_rag.graph import NetworkXGraphStore
-from entitygraph_rag.graph.exposure import dependency_paths, exposure
-from entitygraph_rag.npm.corpus import corpus_name_versions, read_jsonl
-from entitygraph_rag.npm.graph_load import dependency_to_edge, record_to_edge, root_of_lockfile, to_entity
-from entitygraph_rag.npm.vulnerabilities import version_id
+from reachfix.graph import NetworkXGraphStore
+from reachfix.graph.exposure import dependency_paths, exposure
+from reachfix.npm.corpus import corpus_name_versions, read_jsonl
+from reachfix.npm.graph_load import dependency_to_edge, record_to_edge, root_of_lockfile, to_entity
+from reachfix.npm.vulnerabilities import version_id
 
 ROOT = Path(__file__).resolve().parent.parent
 DEPGRAPH_DIR = ROOT / "data" / "processed" / "depgraph"

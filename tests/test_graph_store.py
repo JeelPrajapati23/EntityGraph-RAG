@@ -1,4 +1,4 @@
-from entitygraph_rag.graph import NetworkXGraphStore
+from reachfix.graph import NetworkXGraphStore
 
 TSMC = {"entity_id": "Company:tsmc", "canonical_name": "TSMC", "entity_type": "Company", "aliases": ["TSMC"]}
 NVIDIA = {"entity_id": "Company:nvidia", "canonical_name": "NVIDIA", "entity_type": "Company", "aliases": ["NVIDIA"]}

@@ -1,4 +1,4 @@
-from entitygraph_rag.ingestion.transcript_sections import build_turn_sections
+from reachfix.ingestion.transcript_sections import build_turn_sections
 
 
 def test_short_transcript_turn_not_skipped():

@@ -1,4 +1,4 @@
-# Evaluation golden set — see project plan Phase 6 and src/entitygraph_rag/evaluation/.
+# Evaluation golden set — see project plan Phase 6 and src/reachfix/evaluation/.
 #
 # Every question here is grounded in the corpus actually ingested so far
 # (NVIDIA filings/8-Ks + the Hugging Face acquisition 8-K — run

@@ -1,4 +1,4 @@
-from entitygraph_rag.npm.advisory import chunk_advisory, is_malicious, markdown_sections
+from reachfix.npm.advisory import chunk_advisory, is_malicious, markdown_sections
 
 DETAILS = """Intro line before any heading.
 

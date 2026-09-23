@@ -1,4 +1,4 @@
-from entitygraph_rag.extraction import cache
+from reachfix.extraction import cache
 
 
 def test_cache_roundtrip(tmp_path):

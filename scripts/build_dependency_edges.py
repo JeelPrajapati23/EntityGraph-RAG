@@ -2,7 +2,7 @@
 
 For every dependency each installed package declares, finds the copy Node
 would load (own node_modules first, then each enclosing one; see
-entitygraph_rag.npm.dependencies). Edges keep the declared range and
+reachfix.npm.dependencies). Edges keep the declared range and
 dependency type, list every lockfile they occur in, and are checked against
 the registry's declared dependencies for that version (from
 scripts/fetch_npm_metadata.py's trimmed packuments).
@@ -21,9 +21,9 @@ from collections import Counter, defaultdict
 from functools import cache
 from pathlib import Path
 
-from entitygraph_rag.npm.corpus import read_jsonl
-from entitygraph_rag.npm.dependencies import build_edges, registry_only_declarations, resolve_dependencies
-from entitygraph_rag.npm.lockfile import installed_packages, load_lockfile
+from reachfix.npm.corpus import read_jsonl
+from reachfix.npm.dependencies import build_edges, registry_only_declarations, resolve_dependencies
+from reachfix.npm.lockfile import installed_packages, load_lockfile
 
 ROOT = Path(__file__).resolve().parent.parent
 LOCKFILE_MANIFEST = ROOT / "data" / "raw" / "lockfiles" / "manifest.jsonl"

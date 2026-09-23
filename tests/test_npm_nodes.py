@@ -1,9 +1,9 @@
 import pytest
 
-from entitygraph_rag.npm.licenses import parse_license
-from entitygraph_rag.npm.lookup import NodeLookup
-from entitygraph_rag.npm.nodes import build_nodes, dangling_endpoints, dependency_edge_endpoints
-from entitygraph_rag.npm.projects import Project
+from reachfix.npm.licenses import parse_license
+from reachfix.npm.lookup import NodeLookup
+from reachfix.npm.nodes import build_nodes, dangling_endpoints, dependency_edge_endpoints
+from reachfix.npm.projects import Project
 
 
 @pytest.mark.parametrize(

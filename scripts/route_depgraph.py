@@ -14,11 +14,11 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from entitygraph_rag.depgraph import load_context, route_query
-from entitygraph_rag.extraction.schema import load_schema
-from entitygraph_rag.llm_client import build_client
-from entitygraph_rag.npm.advisory_index import DEFAULT_VARIANT, VARIANTS
-from entitygraph_rag.retrieval import build_embedding_client
+from reachfix.depgraph import load_context, route_query
+from reachfix.extraction.schema import load_schema
+from reachfix.llm_client import build_client
+from reachfix.npm.advisory_index import DEFAULT_VARIANT, VARIANTS
+from reachfix.retrieval import build_embedding_client
 
 ROOT = Path(__file__).resolve().parent.parent
 SHOW = 10

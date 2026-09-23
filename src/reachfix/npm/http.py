@@ -4,7 +4,7 @@ import time
 
 import requests
 
-USER_AGENT = "DepGraph research project (github.com/JeelPrajapati23/EntityGraph-RAG)"
+USER_AGENT = "reachfix research project (github.com/JeelPrajapati23/EntityGraph-RAG)"
 MAX_RETRIES = 5
 
 

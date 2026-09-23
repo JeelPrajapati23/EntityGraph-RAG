@@ -1,7 +1,7 @@
-import entitygraph_rag.evaluation.runner as runner_module
-from entitygraph_rag.evaluation.golden_set import GoldenQuestion
-from entitygraph_rag.evaluation.judge import AnswerJudgment
-from entitygraph_rag.evaluation.runner import evaluate_question, run_evaluation
+import reachfix.evaluation.runner as runner_module
+from reachfix.evaluation.golden_set import GoldenQuestion
+from reachfix.evaluation.judge import AnswerJudgment
+from reachfix.evaluation.runner import evaluate_question, run_evaluation
 
 CHUNK_A = {"chunk_id": "c1", "text": "TSMC fabricates chips for NVIDIA.", "score": 0.9}
 

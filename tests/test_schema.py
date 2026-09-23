@@ -1,4 +1,4 @@
-from entitygraph_rag.ingestion.schema import make_chunk_id
+from reachfix.ingestion.schema import make_chunk_id
 
 
 def test_chunk_id_determinism():

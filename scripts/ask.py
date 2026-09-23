@@ -18,12 +18,12 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from entitygraph_rag.extraction.schema import load_schema
-from entitygraph_rag.graph import NetworkXGraphStore
-from entitygraph_rag.llm_client import build_client
-from entitygraph_rag.retrieval import VectorIndex, build_embedding_client
-from entitygraph_rag.router import EntityLookup, route_query
-from entitygraph_rag.synthesis import synthesize_answer
+from reachfix.extraction.schema import load_schema
+from reachfix.graph import NetworkXGraphStore
+from reachfix.llm_client import build_client
+from reachfix.retrieval import VectorIndex, build_embedding_client
+from reachfix.router import EntityLookup, route_query
+from reachfix.synthesis import synthesize_answer
 
 ROOT = Path(__file__).resolve().parent.parent
 CHUNKS_PATH = ROOT / "data" / "processed" / "chunks.jsonl"

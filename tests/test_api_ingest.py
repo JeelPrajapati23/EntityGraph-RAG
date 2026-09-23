@@ -4,10 +4,10 @@ import threading
 import pytest
 from fastapi.testclient import TestClient
 
-from entitygraph_rag.api import Resources, create_app
-from entitygraph_rag.api.ingest import IngestInProgressError, IngestManager, IngestRequest, build_steps
-from entitygraph_rag.graph import NetworkXGraphStore
-from entitygraph_rag.router import EntityLookup
+from reachfix.api import Resources, create_app
+from reachfix.api.ingest import IngestInProgressError, IngestManager, IngestRequest, build_steps
+from reachfix.graph import NetworkXGraphStore
+from reachfix.router import EntityLookup
 
 KEY = "test-ingest-key"
 AUTH = {"X-API-Key": KEY}

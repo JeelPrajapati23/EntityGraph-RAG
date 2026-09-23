@@ -17,7 +17,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from entitygraph_rag.resolution import apply_resolution, load_company_registry, resolve_entities
+from reachfix.resolution import apply_resolution, load_company_registry, resolve_entities
 
 ROOT = Path(__file__).resolve().parent.parent
 TRIPLES_PATH = ROOT / "data" / "processed" / "triples.jsonl"

@@ -1,4 +1,4 @@
-from entitygraph_rag.ingestion.chunker import pack_units
+from reachfix.ingestion.chunker import pack_units
 
 
 def _words(n: int, prefix: str) -> str:

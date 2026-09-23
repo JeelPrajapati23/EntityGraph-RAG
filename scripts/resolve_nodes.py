@@ -23,10 +23,10 @@ from collections import Counter
 from functools import cache
 from pathlib import Path
 
-from entitygraph_rag.conditions.merge import merge_conditions
-from entitygraph_rag.npm.corpus import corpus_name_versions, read_jsonl
-from entitygraph_rag.npm.nodes import build_nodes, dangling_endpoints, dependency_edge_endpoints
-from entitygraph_rag.npm.projects import load_projects
+from reachfix.conditions.merge import merge_conditions
+from reachfix.npm.corpus import corpus_name_versions, read_jsonl
+from reachfix.npm.nodes import build_nodes, dangling_endpoints, dependency_edge_endpoints
+from reachfix.npm.projects import load_projects
 
 ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / "data" / "raw"

@@ -1,7 +1,7 @@
 """Fetch npm registry metadata for every package name in the resolved lockfiles.
 
 Downloads each full packument from registry.npmjs.org/<name> and keeps a
-trimmed copy (see entitygraph_rag.npm.registry.trim_packument):
+trimmed copy (see reachfix.npm.registry.trim_packument):
 maintainer usernames (emails dropped), the publish-time map, all version
 strings, and license / deprecation / declared dependencies for the
 versions that appear in a corpus tree. Full packuments can be many MB and
@@ -26,9 +26,9 @@ from pathlib import Path
 
 import requests
 
-from entitygraph_rag.npm.corpus import corpus_name_versions, read_jsonl, versions_by_name
-from entitygraph_rag.npm.http import make_session, request_json
-from entitygraph_rag.npm.registry import packument_url, trim_packument
+from reachfix.npm.corpus import corpus_name_versions, read_jsonl, versions_by_name
+from reachfix.npm.http import make_session, request_json
+from reachfix.npm.registry import packument_url, trim_packument
 
 ROOT = Path(__file__).resolve().parent.parent
 LOCKFILE_MANIFEST = ROOT / "data" / "raw" / "lockfiles" / "manifest.jsonl"

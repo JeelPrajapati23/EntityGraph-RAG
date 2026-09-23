@@ -72,7 +72,7 @@ def create_app(
         app.state.resources = resources if resources is not None else loader()
         yield
 
-    app = FastAPI(title="EntityGraph-RAG", lifespan=lifespan)
+    app = FastAPI(title="reachfix", lifespan=lifespan)
 
     @app.get("/", include_in_schema=False)
     def index() -> FileResponse:

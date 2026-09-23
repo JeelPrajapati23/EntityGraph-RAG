@@ -1,7 +1,7 @@
 import json
 from types import SimpleNamespace
 
-from entitygraph_rag.evaluation.judge import AnswerJudgment, build_judge_prompt, judge_answer
+from reachfix.evaluation.judge import AnswerJudgment, build_judge_prompt, judge_answer
 
 FAKE_JUDGMENT = {
     "faithfulness": 0.9,

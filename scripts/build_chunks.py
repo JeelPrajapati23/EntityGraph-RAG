@@ -14,7 +14,7 @@ Usage:
 import argparse
 from pathlib import Path
 
-from entitygraph_rag.ingestion import load_manifest, process_filing, process_transcript, write_jsonl
+from reachfix.ingestion import load_manifest, process_filing, process_transcript, write_jsonl
 
 ROOT = Path(__file__).resolve().parent.parent
 FILINGS_MANIFEST = ROOT / "data" / "raw" / "filings" / "manifest.jsonl"

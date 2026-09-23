@@ -2,7 +2,7 @@
 
 Reads data/processed/depgraph/advisory_chunks.jsonl (from
 scripts/build_advisory_chunks.py) and embeds it as one of the variants in
-entitygraph_rag.npm.advisory_index (a model plus how chunks are fed to it).
+reachfix.npm.advisory_index (a model plus how chunks are fed to it).
 Vectors are cached per window and model in .cache/embeddings/, so a re-run
 only embeds what changed.
 
@@ -19,10 +19,10 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from entitygraph_rag.npm.advisory_index import DEFAULT_VARIANT, VARIANTS, build_advisory_index, index_path
-from entitygraph_rag.npm.corpus import read_jsonl
-from entitygraph_rag.retrieval import build_embedding_client
-from entitygraph_rag.retrieval.windows import parent_chunk_id
+from reachfix.npm.advisory_index import DEFAULT_VARIANT, VARIANTS, build_advisory_index, index_path
+from reachfix.npm.corpus import read_jsonl
+from reachfix.retrieval import build_embedding_client
+from reachfix.retrieval.windows import parent_chunk_id
 
 ROOT = Path(__file__).resolve().parent.parent
 CHUNKS_PATH = ROOT / "data" / "processed" / "depgraph" / "advisory_chunks.jsonl"

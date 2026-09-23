@@ -1,4 +1,4 @@
-from entitygraph_rag.router.entity_lookup import EntityLookup
+from reachfix.router.entity_lookup import EntityLookup
 
 ENTITIES = [
     {"entity_id": "Company:nvidia-corporation", "canonical_name": "NVIDIA Corporation", "entity_type": "Company", "aliases": ["NVIDIA", "NVIDIA Corporation"]},

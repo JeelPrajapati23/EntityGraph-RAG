@@ -1,4 +1,4 @@
-from entitygraph_rag.npm.dependencies import (
+from reachfix.npm.dependencies import (
     build_edges,
     parent_dir,
     registry_only_declarations,
@@ -6,8 +6,8 @@ from entitygraph_rag.npm.dependencies import (
     resolve_install_path,
     split_alias,
 )
-from entitygraph_rag.npm.lockfile import installed_packages
-from entitygraph_rag.npm.registry import declared_dependencies
+from reachfix.npm.lockfile import installed_packages
+from reachfix.npm.registry import declared_dependencies
 
 # app -> lib (^1) resolves to a nested lib@1 under app; the hoisted lib@2 is
 # what everyone else gets. tool is installed twice and resolves `util`

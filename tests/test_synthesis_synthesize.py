@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from entitygraph_rag.synthesis.synthesize import synthesize_answer
+from reachfix.synthesis.synthesize import synthesize_answer
 
 CHUNK_A = {
     "chunk_id": "d1::0::0", "doc_id": "d1", "ticker": "NVDA", "form": "10-K",

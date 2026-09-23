@@ -19,10 +19,10 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from entitygraph_rag.graph import NetworkXGraphStore
-from entitygraph_rag.npm.corpus import read_jsonl
-from entitygraph_rag.npm.releases import Releases
-from entitygraph_rag.npm.remediation import actions, is_resolved, plan_fix, vulnerable_copies
+from reachfix.graph import NetworkXGraphStore
+from reachfix.npm.corpus import read_jsonl
+from reachfix.npm.releases import Releases
+from reachfix.npm.remediation import actions, is_resolved, plan_fix, vulnerable_copies
 
 ROOT = Path(__file__).resolve().parent.parent
 DEPGRAPH_DIR = ROOT / "data" / "processed" / "depgraph"

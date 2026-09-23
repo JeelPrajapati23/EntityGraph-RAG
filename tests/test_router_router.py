@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
-import entitygraph_rag.router.router as router_module
-from entitygraph_rag.router.router import route_query
+import reachfix.router.router as router_module
+from reachfix.router.router import route_query
 
 
 def _decision(route, **kwargs):

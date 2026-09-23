@@ -1,4 +1,4 @@
-from entitygraph_rag.synthesis.citations import (
+from reachfix.synthesis.citations import (
     chunk_citation,
     format_common_neighbor_paths,
     format_edge_path,

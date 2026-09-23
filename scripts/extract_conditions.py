@@ -4,7 +4,7 @@ Reads data/processed/depgraph/advisory_chunks.jsonl (from
 scripts/build_advisory_chunks.py). Each chunk goes to Groq with a prompt and
 output model generated from schema/v2.yaml's `llm` edges only. Every
 condition must quote its evidence verbatim, and one whose quote isn't in the
-text is dropped (see entitygraph_rag.conditions.pipeline).
+text is dropped (see reachfix.conditions.pipeline).
 
 Results are cached per chunk in .cache/conditions/ (keyed on prompt + chunk
 text + model + schema version), so an interrupted run resumes where it
@@ -26,10 +26,10 @@ from pathlib import Path
 import groq
 from dotenv import load_dotenv
 
-from entitygraph_rag.conditions import build_extraction_model, build_system_prompt, extract_conditions
-from entitygraph_rag.extraction.schema import load_schema
-from entitygraph_rag.llm_client import DEFAULT_MODEL, build_client
-from entitygraph_rag.npm.corpus import read_jsonl
+from reachfix.conditions import build_extraction_model, build_system_prompt, extract_conditions
+from reachfix.extraction.schema import load_schema
+from reachfix.llm_client import DEFAULT_MODEL, build_client
+from reachfix.npm.corpus import read_jsonl
 
 ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_PATH = ROOT / "schema" / "v2.yaml"

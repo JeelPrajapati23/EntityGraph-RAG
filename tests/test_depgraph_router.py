@@ -5,17 +5,17 @@ from typing import get_args
 import numpy as np
 import pytest
 
-from entitygraph_rag.depgraph import dispatch as dispatch_module
-from entitygraph_rag.depgraph import router as router_module
-from entitygraph_rag.depgraph.classify import PATTERNS, build_classification_prompt, build_decision_model
-from entitygraph_rag.depgraph.dispatch import DepGraphContext
-from entitygraph_rag.depgraph.router import FALLBACK_REASONING, classify_query, route_query
-from entitygraph_rag.extraction.schema import load_schema
-from entitygraph_rag.graph import NetworkXGraphStore
-from entitygraph_rag.npm.graph_load import to_entity
-from entitygraph_rag.npm.lookup import NodeLookup
-from entitygraph_rag.npm.releases import Releases
-from entitygraph_rag.retrieval import VectorIndex
+from reachfix.depgraph import dispatch as dispatch_module
+from reachfix.depgraph import router as router_module
+from reachfix.depgraph.classify import PATTERNS, build_classification_prompt, build_decision_model
+from reachfix.depgraph.dispatch import DepGraphContext
+from reachfix.depgraph.router import FALLBACK_REASONING, classify_query, route_query
+from reachfix.extraction.schema import load_schema
+from reachfix.graph import NetworkXGraphStore
+from reachfix.npm.graph_load import to_entity
+from reachfix.npm.lookup import NodeLookup
+from reachfix.npm.releases import Releases
+from reachfix.retrieval import VectorIndex
 
 SCHEMA = load_schema(Path(__file__).resolve().parent.parent / "schema" / "v2.yaml")
 

@@ -1,6 +1,6 @@
 import pytest
 
-from entitygraph_rag.resolution.company_registry import CompanyRecord, CompanyRegistry, load_company_registry
+from reachfix.resolution.company_registry import CompanyRecord, CompanyRegistry, load_company_registry
 
 
 @pytest.fixture

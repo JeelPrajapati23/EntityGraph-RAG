@@ -1,4 +1,4 @@
-from entitygraph_rag.npm.vulnerabilities import build_vulnerability_edges, compare_with_osv, version_id
+from reachfix.npm.vulnerabilities import build_vulnerability_edges, compare_with_osv, version_id
 
 FOLLOW_REDIRECTS = {
     "id": "GHSA-74fj-2j2h-c42q",

@@ -15,7 +15,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from entitygraph_rag.retrieval import DEFAULT_EMBEDDING_MODEL, VectorIndex, build_embedding_client, semantic_search
+from reachfix.retrieval import DEFAULT_EMBEDDING_MODEL, VectorIndex, build_embedding_client, semantic_search
 
 ROOT = Path(__file__).resolve().parent.parent
 CHUNKS_PATH = ROOT / "data" / "processed" / "chunks.jsonl"

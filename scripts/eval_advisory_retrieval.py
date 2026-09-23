@@ -1,7 +1,7 @@
 """Compare advisory index variants on label-free retrieval checks.
 
 Runs the package and vulnerability-class query sets from
-entitygraph_rag.npm.retrieval_eval against each built index variant
+reachfix.npm.retrieval_eval against each built index variant
 (scripts/build_advisory_index.py, both --variant values) and reports
 precision@k over distinct advisories. Query embeddings are cached in
 .cache/embeddings/ like chunk embeddings.
@@ -18,11 +18,11 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from entitygraph_rag.npm import retrieval_eval as ev
-from entitygraph_rag.npm.advisory_index import VARIANTS, index_path
-from entitygraph_rag.npm.corpus import read_jsonl
-from entitygraph_rag.retrieval import VectorIndex, build_embedding_client, embed_chunks
-from entitygraph_rag.retrieval.windows import search_chunks
+from reachfix.npm import retrieval_eval as ev
+from reachfix.npm.advisory_index import VARIANTS, index_path
+from reachfix.npm.corpus import read_jsonl
+from reachfix.retrieval import VectorIndex, build_embedding_client, embed_chunks
+from reachfix.retrieval.windows import search_chunks
 
 ROOT = Path(__file__).resolve().parent.parent
 DEPGRAPH = ROOT / "data" / "processed" / "depgraph"

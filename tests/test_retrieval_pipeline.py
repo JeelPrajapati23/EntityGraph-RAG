@@ -1,5 +1,5 @@
-from entitygraph_rag.retrieval import pipeline as pipeline_module
-from entitygraph_rag.retrieval.pipeline import embed_chunks
+from reachfix.retrieval import pipeline as pipeline_module
+from reachfix.retrieval.pipeline import embed_chunks
 
 CHUNKS = [
     {"chunk_id": "d::0::0", "text": "TSMC fabricates chips for NVIDIA."},

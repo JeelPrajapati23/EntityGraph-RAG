@@ -1,4 +1,4 @@
-from entitygraph_rag.resolution.normalize import normalize_name
+from reachfix.resolution.normalize import normalize_name
 
 
 def test_strips_common_corporate_suffix():

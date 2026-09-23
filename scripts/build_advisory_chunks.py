@@ -2,7 +2,7 @@
 
 Reads data/raw/osv/manifest.jsonl (from scripts/fetch_osv.py), splits each
 advisory's markdown `details` at headings and paragraphs, and packs it into
-chunks of at most ~450 words (see entitygraph_rag.npm.advisory). Chunk ids
+chunks of at most ~450 words (see reachfix.npm.advisory). Chunk ids
 are "<osv_id>::<index>" and each chunk links back to the
 advisory's osv.dev page. Malicious-package (MAL-) advisories are skipped.
 
@@ -18,8 +18,8 @@ import dataclasses
 import json
 from pathlib import Path
 
-from entitygraph_rag.npm.advisory import chunk_advisory, is_malicious
-from entitygraph_rag.npm.corpus import read_jsonl
+from reachfix.npm.advisory import chunk_advisory, is_malicious
+from reachfix.npm.corpus import read_jsonl
 
 ROOT = Path(__file__).resolve().parent.parent
 OSV_MANIFEST = ROOT / "data" / "raw" / "osv" / "manifest.jsonl"

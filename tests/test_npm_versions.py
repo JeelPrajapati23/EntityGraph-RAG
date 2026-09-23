@@ -1,6 +1,6 @@
 import pytest
 
-from entitygraph_rag.npm.versions import compare, fixed_versions, in_osv_range, is_affected, satisfies
+from reachfix.npm.versions import compare, fixed_versions, in_osv_range, is_affected, satisfies
 
 
 @pytest.mark.parametrize(

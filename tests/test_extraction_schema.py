@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from entitygraph_rag.extraction.schema import build_triple_model, load_schema, validate_triple
+from reachfix.extraction.schema import build_triple_model, load_schema, validate_triple
 
 
 @pytest.fixture(scope="module")

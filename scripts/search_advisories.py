@@ -17,11 +17,11 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from entitygraph_rag.npm.advisory_index import DEFAULT_VARIANT, VARIANTS, embed_query, index_path
-from entitygraph_rag.npm.corpus import read_jsonl
-from entitygraph_rag.npm.lookup import NodeLookup
-from entitygraph_rag.retrieval import VectorIndex, build_embedding_client
-from entitygraph_rag.retrieval.windows import search_chunks
+from reachfix.npm.advisory_index import DEFAULT_VARIANT, VARIANTS, embed_query, index_path
+from reachfix.npm.corpus import read_jsonl
+from reachfix.npm.lookup import NodeLookup
+from reachfix.retrieval import VectorIndex, build_embedding_client
+from reachfix.retrieval.windows import search_chunks
 
 ROOT = Path(__file__).resolve().parent.parent
 DEPGRAPH = ROOT / "data" / "processed" / "depgraph"

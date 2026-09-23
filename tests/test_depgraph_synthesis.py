@@ -1,5 +1,5 @@
-from entitygraph_rag.depgraph import synthesis as synthesis_module
-from entitygraph_rag.depgraph.synthesis import MAX_GRAPH_FACTS, build_evidence, chain, check_answer, synthesize_answer
+from reachfix.depgraph import synthesis as synthesis_module
+from reachfix.depgraph.synthesis import MAX_GRAPH_FACTS, build_evidence, chain, check_answer, synthesize_answer
 
 ADVISORY = {"vulnerability_id": "GHSA-74fj-2j2h-c42q", "aliases": ["CVE-2022-0155"], "severity": "HIGH",
             "summary": "follow-redirects leaks headers", "source_url": "https://osv.dev/vulnerability/GHSA-74fj-2j2h-c42q"}

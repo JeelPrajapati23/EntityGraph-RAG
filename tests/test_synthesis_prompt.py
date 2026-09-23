@@ -1,4 +1,4 @@
-from entitygraph_rag.synthesis.prompt import build_synthesis_prompt
+from reachfix.synthesis.prompt import build_synthesis_prompt
 
 
 def test_prompt_includes_query_chunks_and_paths():

@@ -1,6 +1,6 @@
 import numpy as np
 
-from entitygraph_rag.retrieval.index import VectorIndex
+from reachfix.retrieval.index import VectorIndex
 
 
 def test_search_ranks_by_cosine_similarity():

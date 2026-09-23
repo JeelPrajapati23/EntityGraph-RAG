@@ -1,4 +1,4 @@
-from entitygraph_rag.graph import NetworkXGraphStore, common_neighbors, two_hop_neighbors
+from reachfix.graph import NetworkXGraphStore, common_neighbors, two_hop_neighbors
 
 
 def _edge(subject_id, object_id, relation="SUPPLIES"):

@@ -1,8 +1,8 @@
-from entitygraph_rag.graph import NetworkXGraphStore
-from entitygraph_rag.npm.graph_load import to_entity
-from entitygraph_rag.npm.releases import Releases
-from entitygraph_rag.npm.remediation import actions, is_resolved, plan_fix, summarize, vulnerable_copies
-from entitygraph_rag.npm.versions import is_affected
+from reachfix.graph import NetworkXGraphStore
+from reachfix.npm.graph_load import to_entity
+from reachfix.npm.releases import Releases
+from reachfix.npm.remediation import actions, is_resolved, plan_fix, summarize, vulnerable_copies
+from reachfix.npm.versions import is_affected
 
 # One lockfile, rooted at app@1.0.0:  app -> mid@1.0.0 -> lib@1.0.0, and app -> lib@1.0.0 directly.
 # Advisories on lib:

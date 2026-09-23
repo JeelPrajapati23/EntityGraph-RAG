@@ -100,7 +100,7 @@ to test that matcher against.
   skip them.
 - **OSV `modified` precision differs by endpoint.** `/v1/querybatch` returns
   microseconds and `/v1/vulns/{id}` returns nanoseconds. The cache check
-  compares at microsecond precision (`entitygraph_rag.npm.osv.normalize_modified`).
+  compares at microsecond precision (`reachfix.npm.osv.normalize_modified`).
 - **npm fetch timeout.** npm's default 5-minute fetch timeout let one stalled
   registry socket hang `browser-sync` for minutes. `fetch_lockfiles.py`
   passes `--fetch-timeout=60000 --fetch-retries=4`.
@@ -116,7 +116,7 @@ Both read the Phase 1 manifests and fully rewrite their output each run.
 Outputs go under `data/processed/depgraph/` so they don't collide with the
 finance pipeline's `data/processed/` files.
 
-**Dependency edges** (`entitygraph_rag.npm.dependencies`). For each
+**Dependency edges** (`reachfix.npm.dependencies`). For each
 dependency an installed package declares, the resolver finds the copy
 Node would load: `<pkg>/node_modules/<dep>` first, then each enclosing
 `node_modules` up to the top. Each edge carries:
@@ -156,7 +156,7 @@ also merged across lockfiles, so traversals from one root should follow
 only edges whose `lockfile_doc_ids` include that root's lockfile. Where
 exact paths matter, `occurrences` has them.
 
-**Advisory chunks** (`entitygraph_rag.npm.advisory`). `details` is
+**Advisory chunks** (`reachfix.npm.advisory`). `details` is
 markdown. It is split into paragraphs at blank lines (never inside a
 fenced code block), and the paragraphs are packed into chunks of at most
 450 words. Packing runs across headings, and each heading stays glued to
@@ -174,7 +174,7 @@ uv run python scripts/build_vulnerability_edges.py  # → data/processed/depgrap
 uv run python scripts/extract_conditions.py [--limit N] [--ids GHSA-…]  # → exploit_conditions.jsonl (Groq)
 ```
 
-**Deterministic and derived edges** (`entitygraph_rag.npm.vulnerabilities`,
+**Deterministic and derived edges** (`reachfix.npm.vulnerabilities`,
 `npm.versions`). `AFFECTS_VERSION_RANGE` and `FIXED_IN` come straight
 from OSV's `affected` field, npm entries only. `HAS_VULNERABILITY` is
 computed by our own matcher: OSV `SEMVER` events are evaluated per the
@@ -189,7 +189,7 @@ comparisons. Withdrawn advisories get no `HAS_VULNERABILITY` edges.
 
 The range check is stored on each dependency edge as `range_satisfied`.
 
-**LLM extraction of `EXPLOITABLE_WHEN`** (`entitygraph_rag.conditions`).
+**LLM extraction of `EXPLOITABLE_WHEN`** (`reachfix.conditions`).
 The prompt and output model are generated from the schema's `llm` edges
 only. `ExploitCondition.category` has a closed vocabulary in
 `schema/v2.yaml` (`property_values`), which becomes a `Literal` type. Each
@@ -235,7 +235,7 @@ uv run python scripts/resolve_nodes.py  # → nodes.jsonl, registry_edges.jsonl,
 
 npm names and versions are already canonical, so this phase gives every
 node one id and checks that every edge endpoint resolves to one
-(`entitygraph_rag.npm.nodes`).
+(`reachfix.npm.nodes`).
 
 - **Ids.** `npm:<name>` for a Package, `npm:<name>@<version>` for a
   PackageVersion, the OSV id for a Vulnerability, `npm-user:<username>`,
@@ -268,7 +268,7 @@ node would have an ambiguous `FIXED_IN`. `NodeLookup` resolves a CVE to
 every advisory that lists it, and Phase 9 remediation must take the
 highest fix across all of them.
 
-**Query-time lookup** (`entitygraph_rag.npm.lookup.NodeLookup`). An
+**Query-time lookup** (`reachfix.npm.lookup.NodeLookup`). An
 advisory id resolves to itself. A CVE resolves to every advisory aliasing
 it. `name@version` resolves to that PackageVersion. A package name
 matches case-insensitively, then fuzzily with `-_./` treated alike
@@ -289,7 +289,7 @@ before:
   deterministic and derived edges
 - an edge can bring a `provenance` list and a `properties` dict
 
-`entitygraph_rag.npm.graph_load` maps DepGraph rows onto that shape. A
+`reachfix.npm.graph_load` maps DepGraph rows onto that shape. A
 `DEPENDS_ON` edge's provenance lists every lockfile it occurs in, plus the
 registry packument when `registry_check` is `match`. That is the plan's
 "one fact from a lockfile and a registry cross-check, both kept as
@@ -302,7 +302,7 @@ These now become one `AFFECTS_VERSION_RANGE` edge per (advisory, package)
 carrying all the ranges. Before, they would have silently merged in the
 store, keeping only the first entry's ranges.
 
-**Traversal** (`entitygraph_rag.graph.exposure`, written against
+**Traversal** (`reachfix.graph.exposure`, written against
 `GraphStore` only):
 - `dependency_paths` does a breadth-first walk over `DEPENDS_ON`,
   following only edges whose `lockfile_doc_ids` include the chosen
@@ -353,7 +353,7 @@ first N words):
 - e5-base-v2, nomic-embed-text, jina-v2, gte-base and Qwen3-Embedding
   aren't served for feature extraction.
 
-**Variants** (`entitygraph_rag.npm.advisory_index`):
+**Variants** (`reachfix.npm.advisory_index`):
 - `minilm_whole`: the raw chunk, truncated, as the finance pipeline did
 - `minilm_windowed`: ~110-word windows overlapping by 20 words, each
   prefixed with the advisory's summary and packages. Search rolls window
@@ -395,7 +395,7 @@ uv run python scripts/route_depgraph.py "Is axios@0.21.1 exposed to CVE-2022-015
 uv run python scripts/eval_depgraph_router.py                                          # eval/depgraph_questions.yaml
 ```
 
-`entitygraph_rag.depgraph` is a separate router from the finance one
+`reachfix.depgraph` is a separate router from the finance one
 (`router/`). The finance router's `neighbors`/`two_hop`/`common_neighbors`
 patterns can't express "exposed through a dependency 9 hops deep in this
 project's lockfile". Its shape is kept: one Groq classification call,
@@ -449,7 +449,7 @@ uv run python scripts/ask_depgraph.py "Is axios@0.21.1 exposed to CVE-2022-0155?
 uv run python scripts/eval_depgraph_router.py --answers                           # routing + answer checks
 ```
 
-`entitygraph_rag.depgraph.synthesis` keeps three things apart. This
+`reachfix.depgraph.synthesis` keeps three things apart. This
 follows the finance rule that the evidence given to the model is not the
 preview shown to the reader.
 

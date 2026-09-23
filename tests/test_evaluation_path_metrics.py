@@ -1,4 +1,4 @@
-from entitygraph_rag.evaluation.path_metrics import path_precision_recall
+from reachfix.evaluation.path_metrics import path_precision_recall
 
 
 def test_exact_match_scores_one():

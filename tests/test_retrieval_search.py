@@ -1,8 +1,8 @@
 import numpy as np
 
-from entitygraph_rag.retrieval import search as search_module
-from entitygraph_rag.retrieval.index import VectorIndex
-from entitygraph_rag.retrieval.search import semantic_search
+from reachfix.retrieval import search as search_module
+from reachfix.retrieval.index import VectorIndex
+from reachfix.retrieval.search import semantic_search
 
 CHUNKS_BY_ID = {
     "a": {"chunk_id": "a", "text": "TSMC fabricates chips for NVIDIA."},

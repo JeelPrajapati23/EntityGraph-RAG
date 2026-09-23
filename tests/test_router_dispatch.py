@@ -1,10 +1,10 @@
 from types import SimpleNamespace
 
-from entitygraph_rag.extraction.schema import load_schema
-from entitygraph_rag.graph import NetworkXGraphStore
-from entitygraph_rag.retrieval.index import VectorIndex
-from entitygraph_rag.router import EntityLookup
-from entitygraph_rag.router.dispatch import common_neighbor_direction, run_graph_guided_hybrid, run_relational
+from reachfix.extraction.schema import load_schema
+from reachfix.graph import NetworkXGraphStore
+from reachfix.retrieval.index import VectorIndex
+from reachfix.router import EntityLookup
+from reachfix.router.dispatch import common_neighbor_direction, run_graph_guided_hybrid, run_relational
 
 TSMC = {"entity_id": "Company:tsmc", "canonical_name": "TSMC", "entity_type": "Company", "aliases": ["TSMC"]}
 NVIDIA = {"entity_id": "Company:nvidia", "canonical_name": "NVIDIA", "entity_type": "Company", "aliases": ["NVIDIA"]}
@@ -141,7 +141,7 @@ def test_run_graph_guided_hybrid_scopes_chunks_and_expands_entities(monkeypatch)
     }
     decision = _decision("graph_guided_hybrid", ["TSMC"])
 
-    import entitygraph_rag.router.dispatch as dispatch_module
+    import reachfix.router.dispatch as dispatch_module
     monkeypatch.setattr(dispatch_module, "semantic_search", lambda *a, **k: [chunks_by_id[cid] for cid in k["candidate_chunk_ids"]])
 
     result = run_graph_guided_hybrid(

@@ -1,10 +1,10 @@
 import numpy as np
 
-from entitygraph_rag.npm.advisory import embedding_prefix
-from entitygraph_rag.npm.advisory_index import advisory_windows
-from entitygraph_rag.npm.retrieval_eval import class_relevance, distinct_advisories, package_queries, precision
-from entitygraph_rag.retrieval import VectorIndex
-from entitygraph_rag.retrieval.windows import embedding_windows, parent_chunk_id, rollup, search_chunks
+from reachfix.npm.advisory import embedding_prefix
+from reachfix.npm.advisory_index import advisory_windows
+from reachfix.npm.retrieval_eval import class_relevance, distinct_advisories, package_queries, precision
+from reachfix.retrieval import VectorIndex
+from reachfix.retrieval.windows import embedding_windows, parent_chunk_id, rollup, search_chunks
 
 
 def words(n, start=0):
@@ -83,7 +83,7 @@ def test_embedding_call_retries_transient_errors_only():
     import pytest
     from huggingface_hub.errors import HfHubHTTPError
 
-    from entitygraph_rag.retrieval.embeddings import _feature_extraction
+    from reachfix.retrieval.embeddings import _feature_extraction
 
     request = httpx.Request("POST", "https://router.huggingface.co/x")
 

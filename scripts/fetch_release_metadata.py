@@ -9,7 +9,7 @@ every lockfile, fetch the packages the plans found missing, and repeat
 until nothing is missing.
 
 Output (gitignored): data/raw/npm/releases/<name>.json (scoped "/" -> "__",
-see entitygraph_rag.npm.registry.trim_releases) and
+see reachfix.npm.registry.trim_releases) and
 data/raw/npm/releases_manifest.jsonl. Packages already on disk are not
 re-fetched unless --refresh is given.
 
@@ -25,12 +25,12 @@ from pathlib import Path
 
 import requests
 
-from entitygraph_rag.graph import NetworkXGraphStore
-from entitygraph_rag.npm.corpus import read_jsonl
-from entitygraph_rag.npm.http import make_session, request_json
-from entitygraph_rag.npm.registry import packument_url, trim_releases
-from entitygraph_rag.npm.releases import Releases
-from entitygraph_rag.npm.remediation import plan_fix, vulnerable_copies
+from reachfix.graph import NetworkXGraphStore
+from reachfix.npm.corpus import read_jsonl
+from reachfix.npm.http import make_session, request_json
+from reachfix.npm.registry import packument_url, trim_releases
+from reachfix.npm.releases import Releases
+from reachfix.npm.remediation import plan_fix, vulnerable_copies
 
 ROOT = Path(__file__).resolve().parent.parent
 DEPGRAPH_DIR = ROOT / "data" / "processed" / "depgraph"

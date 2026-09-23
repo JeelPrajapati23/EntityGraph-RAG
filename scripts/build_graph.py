@@ -14,7 +14,7 @@ Usage:
 import json
 from pathlib import Path
 
-from entitygraph_rag.graph import NetworkXGraphStore, common_neighbors, two_hop_neighbors
+from reachfix.graph import NetworkXGraphStore, common_neighbors, two_hop_neighbors
 
 ROOT = Path(__file__).resolve().parent.parent
 ENTITIES_PATH = ROOT / "data" / "processed" / "entities.jsonl"

@@ -17,7 +17,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from entitygraph_rag.retrieval import (
+from reachfix.retrieval import (
     DEFAULT_EMBEDDING_MODEL,
     DEFAULT_OUTPUT_DIMENSIONALITY,
     VectorIndex,

@@ -1,8 +1,8 @@
 import pytest
 
-from entitygraph_rag.graph import NetworkXGraphStore
-from entitygraph_rag.graph.exposure import dependency_paths, exposed_lockfiles, exposure
-from entitygraph_rag.npm.graph_load import dependency_to_edge, record_to_edge, root_of_lockfile, to_entity
+from reachfix.graph import NetworkXGraphStore
+from reachfix.graph.exposure import dependency_paths, exposed_lockfiles, exposure
+from reachfix.npm.graph_load import dependency_to_edge, record_to_edge, root_of_lockfile, to_entity
 
 # Two lockfiles share app@1.0.0 but resolved its `lib` dep differently:
 # lock:a has lib@1.0.0 (vulnerable), lock:b has lib@1.1.0 (fixed).

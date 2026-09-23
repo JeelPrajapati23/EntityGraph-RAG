@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from entitygraph_rag.npm.corpus import corpus_name_versions, versions_by_name
-from entitygraph_rag.npm.lockfile import installed_packages, load_lockfile, name_from_path, unique_name_versions
+from reachfix.npm.corpus import corpus_name_versions, versions_by_name
+from reachfix.npm.lockfile import installed_packages, load_lockfile, name_from_path, unique_name_versions
 
 LOCK = {
     "name": "depgraph-scratch",

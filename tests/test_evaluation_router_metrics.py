@@ -1,4 +1,4 @@
-from entitygraph_rag.evaluation.router_metrics import router_accuracy
+from reachfix.evaluation.router_metrics import router_accuracy
 
 
 def test_router_accuracy_all_correct():

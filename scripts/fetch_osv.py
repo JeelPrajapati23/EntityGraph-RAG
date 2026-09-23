@@ -26,9 +26,9 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
-from entitygraph_rag.npm.corpus import corpus_name_versions, read_jsonl
-from entitygraph_rag.npm.http import make_session, request_json
-from entitygraph_rag.npm.osv import normalize_modified
+from reachfix.npm.corpus import corpus_name_versions, read_jsonl
+from reachfix.npm.http import make_session, request_json
+from reachfix.npm.osv import normalize_modified
 
 ROOT = Path(__file__).resolve().parent.parent
 LOCKFILE_MANIFEST = ROOT / "data" / "raw" / "lockfiles" / "manifest.jsonl"

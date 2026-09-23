@@ -2,9 +2,9 @@ import json
 
 import pytest
 
-from entitygraph_rag.extraction import pipeline as pipeline_module
-from entitygraph_rag.extraction.pipeline import extract_for_chunk
-from entitygraph_rag.extraction.schema import build_triple_model, load_schema
+from reachfix.extraction import pipeline as pipeline_module
+from reachfix.extraction.pipeline import extract_for_chunk
+from reachfix.extraction.schema import build_triple_model, load_schema
 
 CHUNK = {"chunk_id": "ACC1::0::0", "doc_id": "ACC1", "text": "TSMC fabricates chips for NVIDIA."}
 

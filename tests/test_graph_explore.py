@@ -1,4 +1,4 @@
-from entitygraph_rag.graph import NetworkXGraphStore, ego_subgraph
+from reachfix.graph import NetworkXGraphStore, ego_subgraph
 
 
 def _entity(entity_id, name):

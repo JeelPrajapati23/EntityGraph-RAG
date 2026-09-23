@@ -5,7 +5,7 @@ from pathlib import Path
 
 import yaml
 
-from entitygraph_rag.extraction.schema import load_schema
+from reachfix.extraction.schema import load_schema
 
 ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_V2 = ROOT / "schema" / "v2.yaml"

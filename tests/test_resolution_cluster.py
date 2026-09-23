@@ -1,6 +1,6 @@
 from collections import Counter
 
-from entitygraph_rag.resolution.cluster import cluster_names
+from reachfix.resolution.cluster import cluster_names
 
 
 def test_identical_names_cluster_together():

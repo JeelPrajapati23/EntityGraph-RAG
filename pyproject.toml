@@ -1,7 +1,7 @@
 [project]
-name = "entitygraph-rag"
+name = "reachfix"
 version = "0.1.0"
-description = "Hybrid retrieval engine combining vector search with graph traversal for multi-hop QA over document collections"
+description = "Graph-guided hybrid retrieval over npm dependency trees and security advisories: which projects a vulnerability reaches, and the smallest upgrade that fixes it"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
@@ -23,7 +23,7 @@ dependencies = [
 ]
 
 [project.scripts]
-entitygraph-rag = "entitygraph_rag:main"
+reachfix = "reachfix:main"
 
 [build-system]
 requires = ["uv_build>=0.12.17,<0.13.0"]

@@ -19,8 +19,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from entitygraph_rag.extraction import build_client, build_system_prompt, build_triple_model, extract_for_chunk, load_schema
-from entitygraph_rag.llm_client import DEFAULT_MODEL
+from reachfix.extraction import build_client, build_system_prompt, build_triple_model, extract_for_chunk, load_schema
+from reachfix.llm_client import DEFAULT_MODEL
 
 ROOT = Path(__file__).resolve().parent.parent
 CHUNKS_PATH = ROOT / "data" / "processed" / "chunks.jsonl"

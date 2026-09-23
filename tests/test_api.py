@@ -2,11 +2,11 @@
 import pytest
 from fastapi.testclient import TestClient
 
-import entitygraph_rag.api.app as app_module
-from entitygraph_rag.api import Resources, create_app
-from entitygraph_rag.api.views import result_subgraph
-from entitygraph_rag.graph import NetworkXGraphStore
-from entitygraph_rag.router import EntityLookup
+import reachfix.api.app as app_module
+from reachfix.api import Resources, create_app
+from reachfix.api.views import result_subgraph
+from reachfix.graph import NetworkXGraphStore
+from reachfix.router import EntityLookup
 
 ENTITIES = [
     {"entity_id": "Company:tsmc", "canonical_name": "TSMC", "entity_type": "Company", "aliases": ["TSMC"]},
@@ -50,7 +50,7 @@ def test_health_reports_sizes(client):
 def test_index_serves_demo_page(client):
     resp = client.get("/")
     assert resp.status_code == 200
-    assert "EntityGraph-RAG" in resp.text
+    assert "reachfix" in resp.text
 
 
 def test_explore_resolves_alias_and_returns_subgraph(client):

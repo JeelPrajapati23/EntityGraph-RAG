@@ -1,5 +1,5 @@
-from entitygraph_rag.extraction.prompt import build_system_prompt, build_user_prompt
-from entitygraph_rag.extraction.schema import load_schema
+from reachfix.extraction.prompt import build_system_prompt, build_user_prompt
+from reachfix.extraction.schema import load_schema
 
 
 def test_system_prompt_names_every_node_and_edge_type():

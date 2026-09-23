@@ -24,9 +24,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from entitygraph_rag.npm.lockfile import installed_packages, load_lockfile
-from entitygraph_rag.npm.projects import Project, load_projects
-from entitygraph_rag.npm.registry import packument_url
+from reachfix.npm.lockfile import installed_packages, load_lockfile
+from reachfix.npm.projects import Project, load_projects
+from reachfix.npm.registry import packument_url
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = ROOT / "data" / "raw" / "lockfiles"

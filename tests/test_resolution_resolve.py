@@ -1,7 +1,7 @@
 import pytest
 
-from entitygraph_rag.resolution.company_registry import CompanyRecord, CompanyRegistry
-from entitygraph_rag.resolution.resolve import apply_resolution, resolve_entities
+from reachfix.resolution.company_registry import CompanyRecord, CompanyRegistry
+from reachfix.resolution.resolve import apply_resolution, resolve_entities
 
 TRIPLES = [
     {

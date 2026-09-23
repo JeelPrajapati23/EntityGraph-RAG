@@ -1,4 +1,4 @@
-from entitygraph_rag.ingestion.filing_sections import detect_item_boundaries
+from reachfix.ingestion.filing_sections import detect_item_boundaries
 
 
 def test_detect_item_boundaries_skips_toc():

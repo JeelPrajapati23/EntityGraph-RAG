@@ -4,7 +4,7 @@ import httpx
 import pytest
 from groq import Groq, InternalServerError, RateLimitError
 
-from entitygraph_rag.llm_client import RotatingGroq, build_client, generate_text, parse_api_keys
+from reachfix.llm_client import RotatingGroq, build_client, generate_text, parse_api_keys
 
 REQUEST = httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions")
 DAILY = "Rate limit reached ... on tokens per day (TPD): Limit 200000, Used 198398"

@@ -5,11 +5,11 @@ from typing import get_args
 import pytest
 from pydantic import ValidationError
 
-from entitygraph_rag.conditions import pipeline as pipeline_module
-from entitygraph_rag.conditions.model import build_extraction_model
-from entitygraph_rag.conditions.pipeline import evidence_match, extract_conditions
-from entitygraph_rag.conditions.prompt import build_system_prompt, build_user_prompt
-from entitygraph_rag.extraction.schema import load_schema
+from reachfix.conditions import pipeline as pipeline_module
+from reachfix.conditions.model import build_extraction_model
+from reachfix.conditions.pipeline import evidence_match, extract_conditions
+from reachfix.conditions.prompt import build_system_prompt, build_user_prompt
+from reachfix.extraction.schema import load_schema
 
 SCHEMA_V2 = Path(__file__).resolve().parent.parent / "schema" / "v2.yaml"
 CATEGORIES = {"input_source", "configuration", "api_usage", "platform", "other"}
