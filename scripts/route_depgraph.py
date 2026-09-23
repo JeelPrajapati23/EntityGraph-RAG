@@ -39,7 +39,9 @@ def main() -> None:
         return
 
     print(f"route: {result['route']}" + (f" -> ran {result['executed_route']}" if result["executed_route"] != result["route"] else "")
-          + (f" / {result['pattern']}" if result["pattern"] else "") + (f" / {result['relation']}" if result["relation"] else ""))
+          + (f" / {result['pattern']}" if result["pattern"] else "")
+          + (f" -> ran {result['executed_pattern']}" if result["executed_pattern"] not in (None, result["pattern"]) else "")
+          + (f" / {result['relation']}" if result["relation"] else ""))
     print(f"why:   {result['classification_reasoning']}")
     for e in result["entities"]:
         print(f"  {e['name']!r} -> {', '.join(e['node_ids'])}")

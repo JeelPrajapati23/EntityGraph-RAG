@@ -442,6 +442,66 @@ CVE-2022-24999.
 The prompt was not tuned to fix either one. The set is small, and doing
 that would repeat the finance router's overfitting (see CLAUDE.md).
 
+## Answer synthesis (Phase 8)
+
+```bash
+uv run python scripts/ask_depgraph.py "Is axios@0.21.1 exposed to CVE-2022-0155?"  # answer + chains + osv.dev links
+uv run python scripts/eval_depgraph_router.py --answers                           # routing + answer checks
+```
+
+`entitygraph_rag.depgraph.synthesis` keeps three things apart. This
+follows the finance rule that the evidence given to the model is not the
+preview shown to the reader.
+
+- **Evidence for the model.** Graph facts `[G#]` are readable chains in
+  the plan's form (`axios@0.21.1 → depends_on → follow-redirects@1.13.1
+  [VULNERABLE: GHSA-74fj-2j2h-c42q / CVE-2022-0155, HIGH]`), with fixed
+  versions. Advisory chunks `[A#]` come with their full text.
+- **Exact totals, computed by the router, never by the model.** They are
+  counted over every result row before the router's 200-row cap. Facts
+  are capped at 40 and ranked worst severity first.
+- **The citation block returned to the caller.** It has every chain,
+  every advisory with its osv.dev URL, and chunk previews.
+
+After generation, every CVE/GHSA/MAL id in the answer must appear in the
+evidence (otherwise it's flagged as ungrounded), and every `[G#]`/`[A#]`
+marker must point at evidence that exists.
+
+**Bugs found on real answers:**
+- **Wrong totals.** The first react-scripts answer reported 162
+  advisories instead of 177, because totals were computed after the
+  router capped rows by depth. Totals now come from the router, over all
+  rows, and the cap keeps the most severe rows.
+- **Truncated answer.** The model listed every advisory and was cut off
+  mid-id. It now lists at most 10 and summarizes the rest from the totals.
+- **Blind id check.** The model wrote ids with non-breaking hyphens
+  (U+2011), citations in full-width brackets `【G1】`, zero-width spaces
+  inside markers, and `jws @ 3.2.2`. Any of these makes the checks miss
+  what they're looking for. The answer is normalized before checking and
+  display (dashes are left alone).
+- **False "ungrounded".** Neighbor facts named an advisory by GHSA id
+  only, so a correct "CVE-2022-0155 is fixed in 1.14.7" was flagged.
+  Neighbor results now carry the advisory's aliases.
+
+**Routing gap closed in dispatch, not in the prompt.** "Which projects
+pull in a follow-redirects vulnerable to GHSA-74fj…?" was sometimes
+classified as `exposure`. But exposure walks down from a project, and a
+bare dependency name isn't one, so the answer claimed no project was
+affected. When `exposure` names an advisory but only packages that aren't
+corpus roots, dispatch now runs `affected_projects` for those packages
+and says so in a warning. Results record both the classified `pattern`
+and the `executed_pattern`, so the eval still charges the classifier for
+the miss.
+
+**Eval (20 questions, `eval/results/depgraph_answers.json`):**
+- Answers: 20/20 grounded (no invented ids or markers) and 20/20 cite
+  evidence. 18/20 mention every expected fact. The two misses are
+  phrasing: the right fact, cited, written differently, e.g. naming the
+  vulnerable package without its version.
+- Routing: 17/20 fully correct. Classification varies a little between
+  runs even at temperature 0 (aff-02 came back as `exposure` in two of
+  three runs).
+
 ## Schema
 
 See [`schema/v2.yaml`](../schema/v2.yaml). Key decisions:

@@ -1,0 +1,98 @@
+from entitygraph_rag.depgraph import synthesis as synthesis_module
+from entitygraph_rag.depgraph.synthesis import MAX_GRAPH_FACTS, build_evidence, chain, check_answer, synthesize_answer
+
+ADVISORY = {"vulnerability_id": "GHSA-74fj-2j2h-c42q", "aliases": ["CVE-2022-0155"], "severity": "HIGH",
+            "summary": "follow-redirects leaks headers", "source_url": "https://osv.dev/vulnerability/GHSA-74fj-2j2h-c42q"}
+
+
+def exposure_row(version, depth, severity="HIGH", vuln=None, project="npm:axios@0.21.1"):
+    path = [project] + [f"npm:mid{i}@1.0.0" for i in range(depth - 1)] + [version]
+    return {**ADVISORY, "vulnerability_id": vuln or ADVISORY["vulnerability_id"], "severity": severity,
+            "project": project, "lockfile_doc_id": "lockfile:npm:axios@0.21.1", "version_id": version,
+            "path": path, "depth": depth, "fixed_in": ["npm:follow-redirects@1.14.7"]}
+
+
+def exposure_result(rows, totals=None, total_results=None):
+    return {"query": "q", "route": "relational", "executed_route": "relational", "pattern": "exposure",
+            "projects": ["npm:axios@0.21.1"], "results": rows, "total_results": total_results or len(rows),
+            "totals": totals or {}, "warnings": []}
+
+
+def test_chain_uses_the_plans_readable_form():
+    assert chain(["npm:axios@0.21.1", "npm:follow-redirects@1.13.1"]) == "axios@0.21.1 → depends_on → follow-redirects@1.13.1"
+
+
+def test_exposure_evidence_tags_chains_and_uses_router_totals():
+    totals = {"npm:axios@0.21.1": {"advisories": 7, "vulnerable_versions": 3, "by_severity": {"HIGH": 5, "LOW": 2},
+                                   "max_depth": 4}}
+    evidence = build_evidence(exposure_result([exposure_row("npm:follow-redirects@1.13.1", 1)], totals, 300))
+
+    assert evidence["chains"] == ["axios@0.21.1 → depends_on → follow-redirects@1.13.1 "
+                                  "[VULNERABLE: GHSA-74fj-2j2h-c42q / CVE-2022-0155, HIGH]"]
+    assert "Fixed in: follow-redirects@1.14.7" in evidence["facts"][0]
+    assert evidence["totals"][0] == "axios@0.21.1: 7 advisories on 3 vulnerable versions (5 high, 2 low); deepest at 4 hops."
+    assert "1 most severe of 300" in evidence["totals"][1]
+
+
+def test_exposure_facts_rank_worst_first_and_cap():
+    rows = [exposure_row(f"npm:p{i}@1.0.0", 1, "LOW", vuln=f"GHSA-low{i}") for i in range(MAX_GRAPH_FACTS)]
+    rows.append(exposure_row("npm:bad@1.0.0", 5, "CRITICAL", vuln="GHSA-crit"))
+    evidence = build_evidence(exposure_result(rows))
+
+    assert len(evidence["facts"]) == MAX_GRAPH_FACTS and "GHSA-crit" in evidence["facts"][0]
+    assert any(f"{MAX_GRAPH_FACTS} most severe of {MAX_GRAPH_FACTS + 1}" in t for t in evidence["totals"])
+
+
+def test_empty_exposure_says_none_known_not_safe():
+    evidence = build_evidence(exposure_result([]))
+    assert evidence["totals"] == ["No known vulnerable dependency found for axios@0.21.1 in this dataset."]
+
+
+def test_neighbor_facts_label_advisories_with_their_cve():
+    result = {"query": "q", "route": "relational", "executed_route": "relational", "pattern": "neighbors",
+              "advisories": [ADVISORY], "results": [{
+                  "source": {"node_id": "GHSA-74fj-2j2h-c42q", "name": "GHSA-74fj-2j2h-c42q"},
+                  "node_id": "npm:follow-redirects@1.14.7", "name": "follow-redirects@1.14.7",
+                  "relation": "FIXED_IN", "direction": "out", "provenance": [], "properties": {}}]}
+    evidence = build_evidence(result)
+
+    assert evidence["facts"] == ["GHSA-74fj-2j2h-c42q / CVE-2022-0155 --FIXED_IN--> follow-redirects@1.14.7"]
+    assert check_answer("CVE-2022-0155 is fixed in 1.14.7 [G1].", evidence)["ungrounded_ids"] == []
+
+
+def test_check_answer_flags_invented_ids_and_markers():
+    evidence = build_evidence(exposure_result([exposure_row("npm:follow-redirects@1.13.1", 1)]))
+    checks = check_answer("Exposed to CVE-2022-0155 [G1] and CVE-2099-0001 [G7, A2].", evidence)
+
+    assert checks["ungrounded_ids"] == ["CVE-2099-0001"]
+    assert checks["unknown_markers"] == ["A2", "G7"] and checks["cited_markers"] == ["G1"]
+
+
+def test_synthesize_normalizes_unicode_hyphens_and_fullwidth_brackets(monkeypatch):
+    raw = "Yes: GHSA" + "‑" + "74fj" + "‑" + "2j2h" + "‑" + "c42q 【G1】 – high."
+    monkeypatch.setattr(synthesis_module, "generate_text", lambda *a, **k: raw)
+
+    out = synthesize_answer(exposure_result([exposure_row("npm:follow-redirects@1.13.1", 1)]), client=None)
+
+    assert out["answer"] == "Yes: GHSA-74fj-2j2h-c42q [G1] – high."  # the en dash is left alone
+    assert out["checks"] == {"unknown_markers": [], "ungrounded_ids": [], "cited_markers": ["G1"]}
+    assert out["citations"]["advisories"][0]["url"] == ADVISORY["source_url"]
+
+
+def test_chunks_become_A_markers_with_previews(monkeypatch):
+    monkeypatch.setattr(synthesis_module, "generate_text", lambda *a, **k: "See [A1].")
+    chunk = {"chunk_id": "GHSA-x::0", "doc_id": "GHSA-x", "aliases": ["CVE-2020-9"], "summary": "s",
+             "affected_packages": ["x"], "source_url": "u", "text": "t" * 1000}
+    result = {"query": "q", "route": "semantic", "executed_route": "semantic", "chunks": [chunk], "warnings": []}
+
+    out = synthesize_answer(result, client=None)
+
+    [cite] = out["citations"]["chunks"]
+    assert cite["marker"] == "A1" and len(cite["snippet"]) == 300
+    assert check_answer("CVE-2020-9 [A1]", build_evidence(result))["ungrounded_ids"] == []
+
+
+def test_spaced_package_versions_are_rejoined(monkeypatch):
+    monkeypatch.setattr(synthesis_module, "generate_text", lambda *a, **k: "jws @3.2.2 and semver @ 5.6.0 are affected; email me @ noon [" + chr(0x200B) + "G1]")
+    out = synthesize_answer(exposure_result([exposure_row("npm:follow-redirects@1.13.1", 1)]), client=None)
+    assert out["answer"] == "jws@3.2.2 and semver@5.6.0 are affected; email me @ noon [G1]"

@@ -11,6 +11,7 @@ A bare package name ("express") means its corpus-root versions if any,
 else every version in a tree.
 """
 
+from collections import Counter
 from dataclasses import dataclass, field
 
 from huggingface_hub import InferenceClient
@@ -24,7 +25,8 @@ from ..npm.lookup import NodeLookup
 from ..retrieval import VectorIndex
 from ..retrieval.windows import search_chunks
 
-MAX_ROWS = 200  # cap on result rows per query; synthesis only needs the top of the list
+MAX_ROWS = 200  # cap on result rows per query; totals are computed before the cap
+SEVERITY_ORDER = {"CRITICAL": 0, "HIGH": 1, "MODERATE": 2, "LOW": 3}
 
 
 @dataclass
@@ -106,6 +108,42 @@ def advisory_row(ctx: DepGraphContext, vuln_id: str) -> dict:
             "summary": props.get("summary"), "source_url": props.get("source_url")}
 
 
+def package_of(version_id: str) -> str:
+    """"npm:@babel/core@7.0.0" -> "@babel/core"."""
+    return version_id.removeprefix("npm:").rsplit("@", 1)[0]
+
+
+def fixed_in(ctx: DepGraphContext, vuln_id: str, package: str) -> list[str]:
+    """The advisory's FIXED_IN versions for one package (an advisory can cover several packages)."""
+    return sorted(e["entity_id"] for e in ctx.store.neighbors(vuln_id, relation="FIXED_IN", direction="out")
+                  if package_of(e["entity_id"]) == package)
+
+
+def vulnerabilities_of(ctx: DepGraphContext, version_id: str) -> list[dict]:
+    return [{**advisory_row(ctx, e["entity_id"]), "fixed_in": fixed_in(ctx, e["entity_id"], package_of(version_id))}
+            for e in ctx.store.neighbors(version_id, relation="HAS_VULNERABILITY", direction="out")]
+
+
+def by_severity(row: dict) -> tuple:
+    """Worst first, then shallowest, so capping keeps the rows that matter most."""
+    return (SEVERITY_ORDER.get(row.get("severity"), 4), row["depth"], row["vulnerability_id"], row["version_id"])
+
+
+def exposure_totals(rows: list[dict]) -> dict[str, dict]:
+    """Per project, over every row (not the capped list): advisories, vulnerable versions, severities, depth."""
+    totals = {}
+    for project in sorted({r["project"] for r in rows}):
+        mine = [r for r in rows if r["project"] == project]
+        advisories = {r["vulnerability_id"]: r.get("severity") or "UNLABELED" for r in mine}
+        totals[project] = {
+            "advisories": len(advisories),
+            "vulnerable_versions": len({r["version_id"] for r in mine}),
+            "by_severity": dict(sorted(Counter(advisories.values()).items(), key=lambda kv: SEVERITY_ORDER.get(kv[0], 4))),
+            "max_depth": max(r["depth"] for r in mine),
+        }
+    return totals
+
+
 def run_exposure(ctx: DepGraphContext, resolved) -> dict:
     projects, advisories = split_entities(ctx, resolved)
     rows = []
@@ -113,23 +151,28 @@ def run_exposure(ctx: DepGraphContext, resolved) -> dict:
         for lockfile in lockfiles_for(ctx, project):
             for hit in exposure(ctx.store, project, lockfile, vulnerability_ids=advisories or None):
                 rows.append({"project": project, "lockfile_doc_id": lockfile, **hit,
-                             **advisory_row(ctx, hit["vulnerability_id"])})
-    rows.sort(key=lambda r: (r["depth"], r["vulnerability_id"]))
+                             **advisory_row(ctx, hit["vulnerability_id"]),
+                             "fixed_in": fixed_in(ctx, hit["vulnerability_id"], package_of(hit["version_id"]))})
+    rows.sort(key=by_severity)
     return {"pattern": "exposure", "projects": projects, "advisories": sorted(advisories), "results": rows[:MAX_ROWS],
-            "total_results": len(rows)}
+            "total_results": len(rows), "totals": exposure_totals(rows)}
 
 
-def run_affected_projects(ctx: DepGraphContext, resolved) -> dict:
+def run_affected_projects(ctx: DepGraphContext, resolved, packages: set[str] | None = None) -> dict:
+    """Which corpus projects reach each named advisory. packages, if given, limits it to those packages' versions."""
     _, advisories = split_entities(ctx, resolved)
     rows = []
     for vuln_id in sorted(advisories):
         for lockfile, versions in exposed_lockfiles(ctx.store, vuln_id).items():
             root = root_of_lockfile(lockfile)
             for hit in exposure(ctx.store, root, lockfile, vulnerability_ids={vuln_id}):
-                rows.append({"project": root, "lockfile_doc_id": lockfile, **hit, **advisory_row(ctx, vuln_id)})
+                if packages is not None and package_of(hit["version_id"]) not in packages:
+                    continue
+                rows.append({"project": root, "lockfile_doc_id": lockfile, **hit, **advisory_row(ctx, vuln_id),
+                             "fixed_in": fixed_in(ctx, vuln_id, package_of(hit["version_id"]))})
     rows.sort(key=lambda r: (r["vulnerability_id"], r["project"], r["depth"]))
     return {"pattern": "affected_projects", "advisories": sorted(advisories), "results": rows[:MAX_ROWS],
-            "total_results": len(rows)}
+            "total_results": len(rows), "totals": exposure_totals(rows)}
 
 
 def run_dependency_path(ctx: DepGraphContext, resolved) -> dict:
@@ -148,7 +191,8 @@ def run_dependency_path(ctx: DepGraphContext, resolved) -> dict:
         for lockfile in lockfiles_for(ctx, project):
             paths = dependency_paths(ctx.store, project, lockfile)
             rows.extend({"project": project, "lockfile_doc_id": lockfile, "version_id": v, "path": paths[v],
-                         "depth": len(paths[v]) - 1} for v in sorted(targets & set(paths)))
+                         "depth": len(paths[v]) - 1, "vulnerabilities": vulnerabilities_of(ctx, v)}
+                        for v in sorted(targets & set(paths)))
     rows.sort(key=lambda r: (r["depth"], r["version_id"]))
     return {"pattern": "dependency_path", "results": rows[:MAX_ROWS], "total_results": len(rows)}
 
@@ -162,12 +206,40 @@ def run_neighbors(ctx: DepGraphContext, resolved, relation: str | None) -> dict:
                              "relation": edge["relation"], "direction": edge["direction"],
                              "confidence": edge["confidence"], "provenance": edge["provenance"],
                              "properties": edge.get("properties", {})})
-    return {"pattern": "neighbors", "relation": relation, "results": rows[:MAX_ROWS], "total_results": len(rows)}
+    # Advisory endpoints come with their aliases, so an answer can name the CVE as well as the GHSA id.
+    advisories = sorted({n for r in rows for n in (r["source"]["node_id"], r["node_id"])
+                         if node_type(ctx, n) == "Vulnerability"})
+    return {"pattern": "neighbors", "relation": relation, "results": rows[:MAX_ROWS], "total_results": len(rows),
+            "advisories": [advisory_row(ctx, a) for a in advisories]}
+
+
+def non_root_packages(ctx: DepGraphContext, resolved) -> set[str] | None:
+    """Package names if every named package/version is a bare Package with no corpus-root version, else None."""
+    names = set()
+    for _, ids in resolved:
+        for node_id in ids:
+            kind = node_type(ctx, node_id)
+            if kind == "PackageVersion":
+                return None
+            if kind == "Package":
+                if any(ctx.store.get_entity(v)["properties"].get("is_root") for v in project_versions(ctx, node_id)):
+                    return None
+                names.add(node_id.removeprefix("npm:"))
+    return names or None
 
 
 def run_relational(ctx: DepGraphContext, decision: BaseModel, resolved) -> dict:
     pattern = decision.pattern or "neighbors"
     if pattern == "exposure":
+        # "Which projects pull in a follow-redirects vulnerable to GHSA-x?" can come back as
+        # `exposure`, but exposure walks down from a project, and a bare dependency name is
+        # not one. With a named advisory and no project, answer upward instead.
+        packages = non_root_packages(ctx, resolved)
+        if packages and split_entities(ctx, resolved)[1]:
+            result = run_affected_projects(ctx, resolved, packages)
+            result["warning"] = (f"no named project is a corpus root; answered which projects reach the advisory "
+                                 f"through {', '.join(sorted(packages))}")
+            return result
         return run_exposure(ctx, resolved)
     if pattern == "affected_projects":
         return run_affected_projects(ctx, resolved)

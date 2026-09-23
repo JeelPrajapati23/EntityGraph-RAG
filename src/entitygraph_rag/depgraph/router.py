@@ -58,12 +58,15 @@ def route_query(query: str, *, client: Groq, ctx: DepGraphContext, schema: Schem
             warnings.append(f"{decision.route} route needs a known entity; fell back to semantic search")
         result = {"chunks": semantic_chunks(ctx, query, top_k)}
     executed = "semantic" if decision.route != "semantic" and not resolved else decision.route
+    # Dispatch can run a different pattern than classified (see run_relational); keep both.
+    executed_pattern = result.pop("pattern", None)
 
     return {
         "query": query,
         "route": decision.route,
         "executed_route": executed,
         "pattern": decision.pattern,
+        "executed_pattern": executed_pattern,
         "relation": decision.relation,
         "classification_reasoning": decision.reasoning,
         "entities": [{"name": name, "node_ids": ids} for name, ids in resolved],

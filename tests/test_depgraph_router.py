@@ -143,3 +143,20 @@ def test_unknown_entities_fall_back_to_semantic_with_a_warning(ctx, monkeypatch)
     result = ask(ctx)
     assert result["route"] == "relational" and result["executed_route"] == "semantic"
     assert any("left-pad" in w for w in result["warnings"]) and result["chunks"]
+
+
+def test_exposure_with_only_a_dependency_name_answers_which_projects_reach_the_advisory(ctx, monkeypatch):
+    # "Which projects pull in a lib vulnerable to CVE-2020-1?" classified as exposure.
+    classify_as(monkeypatch, route="relational", pattern="exposure", entities=["lib", "CVE-2020-1"])
+    result = ask(ctx)
+
+    assert (result["pattern"], result["executed_pattern"]) == ("exposure", "affected_projects")
+    [row] = result["results"]
+    assert row["project"] == "npm:app@1.0.0" and row["version_id"] == "npm:lib@1.0.0"
+    assert any("no named project is a corpus root" in w for w in result["warnings"])
+
+
+def test_exposure_from_a_named_root_is_unchanged(ctx, monkeypatch):
+    classify_as(monkeypatch, route="relational", pattern="exposure", entities=["app", "CVE-2020-1"])
+    result = ask(ctx)
+    assert [r["project"] for r in result["results"]] == ["npm:app@1.0.0"] and not result["warnings"]
