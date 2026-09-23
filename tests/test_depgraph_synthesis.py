@@ -120,6 +120,14 @@ def test_remediation_facts_carry_the_plan_and_router_totals():
     assert [a["vulnerability_id"] for a in evidence["advisories"]] == ["GHSA-74fj-2j2h-c42q"]
 
 
+def test_remediation_fact_says_why_the_lowest_fix_is_skipped():
+    result = remediation_result()
+    result["results"][0]["plan"].update(target_version="3.0.8", lowest_safe_still_affected_by=["GHSA-b", "GHSA-c"])
+    [fact] = build_evidence(result)["facts"]
+    assert ("Lowest version outside every targeted advisory's range: minimatch@3.0.5, but it is still affected by "
+            "2 other advisories in this dataset, so the plan targets minimatch@3.0.8 instead.") in fact
+
+
 def test_check_answer_flags_versions_the_evidence_never_gives():
     evidence = build_evidence(remediation_result())
     checks = check_answer("Upgrade to mocha@10.6.0 [G1]; minimatch@3.0.5 is fixed, not minimatch@3.1.2.", evidence)

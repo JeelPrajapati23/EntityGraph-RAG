@@ -256,7 +256,8 @@ def plan_fix(store: GraphStore, releases: Releases, lockfile_doc_id: str, node_i
                editable_root=project_root is not None)
     plan = plan_copy(env, node_id, ranked, describe, best=top_tier(ranked, rank))
     return {"lockfile_doc_id": lockfile_doc_id, "advisories": sorted(targets),
-            "lowest_safe_version": safe[0] if safe else None, **plan}
+            "lowest_safe_version": safe[0] if safe else None,
+            "lowest_safe_still_affected_by": others[safe[0]] if safe else [], **plan}
 
 
 MAX_LISTED = 8

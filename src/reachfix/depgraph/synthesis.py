@@ -176,8 +176,15 @@ def _remediation_facts(result: dict) -> tuple[list[str], list[str], list[dict], 
         plan = row["plan"]
         tags = " ".join(vuln_tag(a) for a in row["advisories"])
         chains.append(f"{chain(row['path'])} {tags}")
-        lowest = (f" Lowest version outside every targeted advisory's range: {plan['package']}@{plan['lowest_safe_version']}."
-                  if plan.get("lowest_safe_version") else "")
+        lowest = ""
+        if plan.get("lowest_safe_version"):
+            lowest = f" Lowest version outside every targeted advisory's range: {plan['package']}@{plan['lowest_safe_version']}."
+            # Say why the plan skips it, so the answer doesn't present both as the fix.
+            others, target = plan.get("lowest_safe_still_affected_by"), plan.get("target_version")
+            if others and target and target != plan["lowest_safe_version"]:
+                count = f"{len(others)} other advisor{'y' if len(others) == 1 else 'ies'}"
+                lowest = (f"{lowest[:-1]}, but it is still affected by {count} in this dataset, so the plan targets "
+                          f"{plan['package']}@{target} instead.")
         facts.append(f"In {short(row['project'])}: {chains[-1]}. Status: {REMEDIATION_STATUS[plan['status']]}.{lowest} "
                      f"Plan: {' '.join(row['actions'])}")
         advisories.update({a["vulnerability_id"]: a for a in row["advisories"]})

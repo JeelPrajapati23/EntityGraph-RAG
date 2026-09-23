@@ -71,6 +71,7 @@ def test_prefers_versions_clear_of_other_advisories_and_not_deprecated():
     # Only 1.1.x fits; 1.1.0 is hit by GHSA-c, so 1.1.1 is picked.
     plan = plan_fix(build_store(app_lib="~1.1.0", mid_lib="~1.1.0"), releases(), LOCK, "npm:lib@1.0.0")
     assert plan["target_version"] == "1.1.1" and "still_affected_by" not in plan
+    assert plan["lowest_safe_version"] == "1.0.3" and plan["lowest_safe_still_affected_by"] == []
 
     # A deprecated 1.0.3 loses to a clean, current 1.1.1; prereleases are never candidates.
     plan = plan_fix(build_store(), releases(lib_deprecated=["1.0.3"]), LOCK, "npm:lib@1.0.0")
