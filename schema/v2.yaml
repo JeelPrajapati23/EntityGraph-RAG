@@ -83,7 +83,16 @@ node_types:
       LLM extraction.
     properties:
       - text
-      - category         # one of: input_source, configuration, api_usage, platform, other
+      - category
+    # Closed vocabularies for properties. The LLM output model turns these
+    # into Literal types, the same way it does for edge names.
+    property_values:
+      category:
+        input_source: attacker-controlled input must reach the package (e.g. parsing untrusted YAML, user-supplied URLs)
+        configuration: a non-default option or setting must be enabled (e.g. `maxRedirects` raised)
+        api_usage: a specific function, method or feature must be used (e.g. calling `merge()` on user objects)
+        platform: a runtime, OS or deployment requirement (e.g. Windows only, behind a proxy)
+        other: any stated precondition that fits none of the above
 
 edge_types:
   VERSION_OF:

@@ -167,6 +167,165 @@ osv.dev page), `aliases`, `summary`, `severity`, `modified`,
 `affected_packages` and the `sections` it spans. A single block over 450
 words (one 802-word PoC) is kept whole rather than cut.
 
+## Extraction (Phase 3)
+
+```bash
+uv run python scripts/build_vulnerability_edges.py  # → data/processed/depgraph/vulnerability_edges.jsonl
+uv run python scripts/extract_conditions.py [--limit N] [--ids GHSA-…]  # → exploit_conditions.jsonl (Groq)
+```
+
+**Deterministic and derived edges** (`entitygraph_rag.npm.vulnerabilities`,
+`npm.versions`). `AFFECTS_VERSION_RANGE` and `FIXED_IN` come straight
+from OSV's `affected` field, npm entries only. `HAS_VULNERABILITY` is
+computed by our own matcher: OSV `SEMVER` events are evaluated per the
+OSV spec, with `node-semver` (a Python port of npm's `semver`) doing the
+comparisons. Withdrawn advisories get no `HAS_VULNERABILITY` edges.
+
+| | |
+|---|---|
+| Edges | 328 `AFFECTS_VERSION_RANGE` (one per advisory and package, from 570 OSV `affected` entries), 551 `FIXED_IN` (26 fix targets are in some tree), 556 `HAS_VULNERABILITY` |
+| vs OSV's own matches (`package_vulns.jsonl`) | 556 agree, 0 only ours, 0 only OSV's |
+| `DEPENDS_ON` range check | 5,982 of 5,983 resolved versions satisfy their declared range. The one exception is a peer: `@pmmmwh/react-refresh-webpack-plugin` wants `type-fest@^0.13.1` and `--legacy-peer-deps` left 0.11.0 |
+
+The range check is stored on each dependency edge as `range_satisfied`.
+
+**LLM extraction of `EXPLOITABLE_WHEN`** (`entitygraph_rag.conditions`).
+The prompt and output model are generated from the schema's `llm` edges
+only. `ExploitCondition.category` has a closed vocabulary in
+`schema/v2.yaml` (`property_values`), which becomes a `Literal` type. Each
+condition must quote its `evidence` from the chunk. A quote that isn't
+found in the chunk text or summary gets the condition dropped. The match
+ignores case, whitespace and markdown punctuation, and quotes of 6+ words
+may match fuzzily at ≥95. Each edge records `evidence_match: exact|fuzzy`.
+
+Prompt revisions, from a 9-advisory sample (one revision only, to avoid
+tuning the prompt to a small set):
+
+- Conditions must describe the victim application or its environment,
+  never an attacker's step. The first version returned things like "the
+  attack payload is placed in the query string".
+- PoC code shows attacker steps. The first version pulled
+  "conditions" out of axios PoC code.
+- The evidence check originally failed on markdown link brackets and on a
+  dropped "the", which lost two true conditions.
+
+**Full run (2026-09-23):** all 383 chunks, spread over 8 rotated Groq
+keys (see `llm_client.RotatingGroq`). The free tier's 200K tokens/day per
+key covers ~73 chunks, at ~2.3K tokens each.
+
+| | |
+|---|---|
+| Conditions | 637 on 263 of 295 advisories. 32 advisories state no precondition |
+| Evidence | 631 exact matches, 6 fuzzy, 15 dropped as not found in the text |
+| Category | 279 `input_source`, 145 `configuration`, 104 `api_usage`, 59 `other`, 50 `platform` |
+
+Spot checks look right on the whole: "the application extracts
+attacker-controlled tar archives", "the application calls `setIn` with
+data derived from a request". There's some noise too, e.g. "express must
+not redirect before the template appears". There's no labeled set yet to
+measure precision. That belongs to the evaluation phase. Re-running
+resumes from the cache (`.cache/conditions/`, keyed on prompt + chunk +
+model + schema version).
+
+## Resolution (Phase 4)
+
+```bash
+uv run python scripts/resolve_nodes.py  # → nodes.jsonl, registry_edges.jsonl, condition_edges.jsonl
+```
+
+npm names and versions are already canonical, so this phase gives every
+node one id and checks that every edge endpoint resolves to one
+(`entitygraph_rag.npm.nodes`).
+
+- **Ids.** `npm:<name>` for a Package, `npm:<name>@<version>` for a
+  PackageVersion, the OSV id for a Vulnerability, `npm-user:<username>`,
+  `license:<id>`, and `<osv_id>::cond::<n>` for an ExploitCondition.
+- **PackageVersion** covers every tree version plus every `FIXED_IN`
+  target (`in_tree: false`), with `is_root`, `published_at`,
+  `deprecated` and `lockfile_doc_ids`.
+- **Registry edges:** `VERSION_OF`, `MAINTAINED_BY` (current maintainers
+  only; the registry keeps no history) and `LICENSED_UNDER`. An SPDX
+  expression like `(MIT OR CC0-1.0)` gives one edge per license, each
+  carrying the full expression and operator. Two legacy spellings are
+  mapped (`Apache 2.0`, `AFLv2.1`). `BSD` names no single SPDX license
+  and is kept as is rather than guessed.
+- **ExploitCondition nodes** merge near-duplicate conditions within one
+  advisory (token_sort_ratio ≥ 90), since multi-chunk advisories restate
+  them. Conditions are never merged across advisories.
+
+**First run (2026-09-23):** 6,460 nodes (1,765 Package, 2,905
+PackageVersion, 296 Vulnerability, 844 Maintainer, 19 License, 631
+ExploitCondition merged from 637 extracted conditions). 17,944 edges, 0
+dangling endpoints. 122 tree versions are deprecated.
+
+**Gotcha: one CVE can belong to several advisories.** Six CVE ids are
+aliases of two advisories each, for example `CVE-2024-45296` on
+`GHSA-9wv6-86v2-598j` and `GHSA-37ch-88jc-xwx2` (path-to-regexp). These
+are an advisory and its incomplete-fix follow-up. They list each other
+as aliases but have different ranges: 0.1.x is "fixed" in 0.1.10 by one
+and in 0.1.13 by the other. They stay separate nodes, because a merged
+node would have an ambiguous `FIXED_IN`. `NodeLookup` resolves a CVE to
+every advisory that lists it, and Phase 9 remediation must take the
+highest fix across all of them.
+
+**Query-time lookup** (`entitygraph_rag.npm.lookup.NodeLookup`). An
+advisory id resolves to itself. A CVE resolves to every advisory aliasing
+it. `name@version` resolves to that PackageVersion. A package name
+matches case-insensitively, then fuzzily with `-_./` treated alike
+(`follow redirects` → `follow-redirects`). The finance-era
+`normalize_name` is not reused: it drops words like "co" and "group",
+which are real npm package names.
+
+## Graph construction (Phase 5)
+
+```bash
+uv run python scripts/build_depgraph.py  # → data/processed/depgraph/graph.pkl
+```
+
+The finance-era `GraphStore` interface and `NetworkXGraphStore` are
+reused. `upsert_edge` was generalized, and finance edges load exactly as
+before:
+- provenance fields are optional, and `confidence` defaults to 1.0 for
+  deterministic and derived edges
+- an edge can bring a `provenance` list and a `properties` dict
+
+`entitygraph_rag.npm.graph_load` maps DepGraph rows onto that shape. A
+`DEPENDS_ON` edge's provenance lists every lockfile it occurs in, plus the
+registry packument when `registry_check` is `match`. That is the plan's
+"one fact from a lockfile and a registry cross-check, both kept as
+provenance". A merged `EXPLOITABLE_WHEN` edge keeps one provenance entry
+per source chunk, with its evidence quote.
+
+**Edge collision fixed at the source.** OSV lists a package once per
+release line (`minimatch` has 8 `affected` entries in one advisory).
+These now become one `AFFECTS_VERSION_RANGE` edge per (advisory, package)
+carrying all the ranges. Before, they would have silently merged in the
+store, keeping only the first entry's ranges.
+
+**Traversal** (`entitygraph_rag.graph.exposure`, written against
+`GraphStore` only):
+- `dependency_paths` does a breadth-first walk over `DEPENDS_ON`,
+  following only edges whose `lockfile_doc_ids` include the chosen
+  lockfile.
+- `exposure` returns every reachable (vulnerable version, advisory) with
+  its shortest path.
+- `exposed_lockfiles` lists the projects affected by one advisory.
+
+**First build (2026-09-23):** 6,460 nodes, 17,944 edges.
+
+- **Reachability:** for all 20 lockfiles, a lockfile-scoped walk from the
+  root reaches exactly the versions that lockfile installs. The check
+  reads the raw lockfiles, independently of the graph.
+- **Exposure:** per-root advisory counts match Phase 1 (177 for
+  react-scripts, 5 for jsonwebtoken).
+- **Depth:** trees go deeper than the plan's "4–6 levels". Max depth is
+  3–11 hops, and the deepest vulnerable version is 9 hops from its root
+  (`json-schema@0.2.3` under react-scripts, `ansi-regex@3.0.0` under
+  @angular/cli).
+- **Demo path:** `npm:axios@0.21.1 -> depends_on ->
+  npm:follow-redirects@1.13.1 [VULNERABLE: GHSA-74fj-2j2h-c42q /
+  CVE-2022-0155]`.
+
 ## Schema
 
 See [`schema/v2.yaml`](../schema/v2.yaml). Key decisions:

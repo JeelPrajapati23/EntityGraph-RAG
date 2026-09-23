@@ -106,6 +106,11 @@ def main() -> None:
     print(f"\nDone. {len(edges)} version-level edges ({dict(by_type)}) -> "
           f"{(OUT_DIR / 'dependency_edges.jsonl').relative_to(ROOT).as_posix()}")
     print(f"  registry cross-check: {dict(checks)}")
+    unsatisfied = [e for e in edges if not e["range_satisfied"]]
+    print(f"  resolved version outside its declared range: {len(unsatisfied)}")
+    for e in unsatisfied:
+        print(f"    {e['from_name']}@{e['from_version']} -> {e['to_name']}@{e['to_version']} "
+              f"({e['dependency_type']} {e['version_range']!r})")
     print(f"  registry declares {len(registry_only)} deps that the lockfiles don't list")
     print(f"  {len(unresolved)} unresolved ({peer_optional} optional peers) -> "
           f"{(OUT_DIR / 'unresolved_dependencies.jsonl').relative_to(ROOT).as_posix()}")

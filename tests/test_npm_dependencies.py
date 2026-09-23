@@ -163,3 +163,18 @@ def test_registry_check_statuses():
 def test_registry_check_without_registry_data():
     edges, _ = build_edges({"lock:a": resolve_dependencies(LOCK)}, lambda name, version: None)
     assert {e["registry_check"] for e in edges} == {"no_registry_data"}
+
+
+def test_range_satisfied_flags_a_peer_installed_outside_its_range():
+    lock = {
+        "lockfileVersion": 3,
+        "packages": {
+            "node_modules/plugin": {"version": "0.4.3", "dependencies": {"a": "^1.0.0"},
+                                    "peerDependencies": {"type-fest": "^0.13.1"}},
+            "node_modules/a": {"version": "1.2.0"},
+            "node_modules/type-fest": {"version": "0.11.0"},
+        },
+    }
+    edges, _ = build_edges({"lock:a": resolve_dependencies(lock)}, lambda name, version: None)
+
+    assert {e["dep_name"]: e["range_satisfied"] for e in edges} == {"a": True, "type-fest": False}

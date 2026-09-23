@@ -5,8 +5,9 @@ about who depends on it. For each dependency an installed package
 declares, this finds the copy Node would load: look in the package's own
 `node_modules` first, then in each enclosing `node_modules` up to the top.
 
-Each edge keeps the declared range and dependency type, and is checked
-against the registry's copy of that version's declared dependencies.
+Each edge keeps the declared range and dependency type, records whether
+the resolved version satisfies that range, and is checked against the
+registry's copy of that version's declared dependencies.
 """
 
 from collections.abc import Callable, Iterable
@@ -14,6 +15,7 @@ from dataclasses import dataclass
 
 from .lockfile import NODE_MODULES, InstalledPackage, installed_packages
 from .registry import declared_dependencies
+from .versions import satisfies
 
 DEPENDENCY_TYPES = ("prod", "optional", "peer")
 ALIAS_PREFIX = "npm:"
@@ -154,6 +156,9 @@ def build_edges(lockfile_deps: dict[str, list[Dependency]], lookup: RegistryLook
                     "version_range": split_alias(dep.spec),
                     "declared_spec": dep.spec,
                     "dependency_type": dep.dependency_type,
+                    # False happens for peers: --legacy-peer-deps installs whatever is already there.
+                    # Also False for a non-semver spec (a dist-tag or URL); none occur in this corpus.
+                    "range_satisfied": satisfies(dep.target.version, split_alias(dep.spec)),
                     "registry_check": status,
                     "registry_spec": registry_spec,
                     "lockfile_doc_ids": [],

@@ -103,3 +103,18 @@ def test_save_and_load_roundtrip(tmp_path):
     assert reloaded.node_count() == store.node_count()
     assert reloaded.edge_count() == store.edge_count()
     assert reloaded.get_entity("Company:tsmc") == TSMC
+
+
+def test_upsert_edge_accepts_deterministic_edges_without_chunk_or_confidence():
+    store = NetworkXGraphStore()
+    store.upsert_edge({"subject_id": "npm:a@1.0.0", "object_id": "npm:b@2.0.0", "relation": "DEPENDS_ON",
+                       "source_doc_id": "lock:x", "extraction_method": "deterministic",
+                       "properties": {"version_range": "^2.0.0"}})
+    store.upsert_edge({"subject_id": "npm:a@1.0.0", "object_id": "npm:b@2.0.0", "relation": "DEPENDS_ON",
+                       "provenance": [{"source_doc_id": "lock:y"}], "properties": {"version_range": "other"}})
+
+    [edge] = store.neighbors("npm:a@1.0.0")
+    assert edge["confidence"] == 1.0
+    assert [p["source_doc_id"] for p in edge["provenance"]] == ["lock:x", "lock:y"]
+    assert edge["provenance"][0] == {"source_doc_id": "lock:x", "extraction_method": "deterministic", "confidence": 1.0}
+    assert edge["properties"] == {"version_range": "^2.0.0"}  # first source's properties win

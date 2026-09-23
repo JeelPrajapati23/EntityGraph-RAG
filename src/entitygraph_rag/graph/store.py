@@ -24,6 +24,14 @@ class GraphStore(ABC):
         existing edge's provenance list, so a relation stated in multiple
         chunks yields one edge backed by multiple citations, not N
         duplicate edges.
+
+        Only subject_id, relation and object_id are required. Provenance
+        fields (source_chunk_id, source_doc_id, source_url,
+        extraction_method, confidence, extracted_at) are optional, and
+        confidence defaults to 1.0. An edge may instead bring a ready-made
+        `provenance` list (one fact backed by several sources) and a
+        `properties` dict (e.g. DEPENDS_ON's version_range). On a merge,
+        properties already on the edge are kept.
         """
 
     def load(self, entities: Iterable[dict], edges: Iterable[dict]) -> None:
@@ -39,7 +47,7 @@ class GraphStore(ABC):
 
     @abstractmethod
     def neighbors(self, entity_id: str, *, relation: str | None = None, direction: str = "out") -> list[dict]:
-        """Return one dict per edge touching entity_id: entity_id, direction, relation, confidence, provenance.
+        """Return one dict per edge touching entity_id: entity_id, direction, relation, confidence, provenance, properties.
 
         direction is "out" (entity_id is the edge's subject), "in" (object),
         or "both". relation, if given, filters to that edge type only.

@@ -18,6 +18,17 @@ import networkx as nx
 
 from .store import GraphStore
 
+# Deterministic and derived edges (schema v2) carry no LLM confidence: they are ground truth.
+DEFAULT_CONFIDENCE = 1.0
+PROVENANCE_FIELDS = ("source_chunk_id", "source_doc_id", "source_url", "extraction_method", "confidence", "extracted_at")
+
+
+def provenance_entry(edge: dict) -> dict:
+    """The edge's provenance fields. Finance edges have all but source_url; DepGraph edges vary by type."""
+    entry = {k: edge[k] for k in PROVENANCE_FIELDS if edge.get(k) is not None}
+    entry.setdefault("confidence", DEFAULT_CONFIDENCE)
+    return entry
+
 
 class NetworkXGraphStore(GraphStore):
     def __init__(self) -> None:
@@ -34,25 +45,25 @@ class NetworkXGraphStore(GraphStore):
         subject_id = edge["subject_id"]
         object_id = edge["object_id"]
         relation = edge["relation"]
-        provenance_entry = {
-            "source_chunk_id": edge["source_chunk_id"],
-            "source_doc_id": edge["source_doc_id"],
-            "confidence": edge["confidence"],
-            "extracted_at": edge["extracted_at"],
-        }
+        confidence = edge.get("confidence", DEFAULT_CONFIDENCE)
+        provenance = edge.get("provenance") or [provenance_entry(edge)]
+        properties = edge.get("properties", {})
 
         if self._graph.has_edge(subject_id, object_id, key=relation):
             data = self._graph[subject_id][object_id][relation]
-            data["provenance"].append(provenance_entry)
-            data["confidence"] = max(data["confidence"], edge["confidence"])
+            data["provenance"].extend(provenance)
+            data["confidence"] = max(data["confidence"], confidence)
+            for key, value in properties.items():
+                data["properties"].setdefault(key, value)  # the first source's properties win
         else:
             self._graph.add_edge(
                 subject_id,
                 object_id,
                 key=relation,
                 relation=relation,
-                confidence=edge["confidence"],
-                provenance=[provenance_entry],
+                confidence=confidence,
+                provenance=list(provenance),
+                properties=dict(properties),
             )
 
     def get_entity(self, entity_id: str) -> dict | None:

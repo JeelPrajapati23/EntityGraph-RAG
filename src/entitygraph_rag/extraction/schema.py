@@ -6,7 +6,7 @@ file is the only thing that needs to change to retarget extraction — see
 schema/v1.yaml's own header comment.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
@@ -21,6 +21,8 @@ class NodeType:
     name: str
     description: str
     properties: list[str]
+    # property -> {allowed value: description}; only for closed-vocabulary properties
+    property_values: dict[str, dict[str, str]] = field(default_factory=dict)
 
 
 @dataclass
@@ -30,6 +32,8 @@ class EdgeType:
     object_types: list[str]
     description: str
     symmetric: bool = False
+    # deterministic / derived / llm (schema v2+). v1 declares none, and every v1 edge is LLM-extracted.
+    extraction: str = "llm"
 
 
 @dataclass
@@ -45,6 +49,10 @@ class Schema:
     def allowed_subject_types(self, relation: str) -> set[str]:
         return set(self.edge_types[relation].subject_types)
 
+    def llm_edge_types(self) -> dict[str, "EdgeType"]:
+        """The edge types an LLM extracts. Only these belong in an extraction prompt or output model."""
+        return {name: edge for name, edge in self.edge_types.items() if edge.extraction == "llm"}
+
 
 def _as_list(value: str | list[str]) -> list[str]:
     return value if isinstance(value, list) else [value]
@@ -54,7 +62,12 @@ def load_schema(path: Path = DEFAULT_SCHEMA_PATH) -> Schema:
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
 
     node_types = {
-        name: NodeType(name=name, description=body["description"].strip(), properties=body.get("properties", []))
+        name: NodeType(
+            name=name,
+            description=body["description"].strip(),
+            properties=body.get("properties", []),
+            property_values=body.get("property_values", {}),
+        )
         for name, body in raw["node_types"].items()
     }
     edge_types = {
@@ -64,6 +77,7 @@ def load_schema(path: Path = DEFAULT_SCHEMA_PATH) -> Schema:
             object_types=_as_list(body["object"]),
             description=body["description"].strip(),
             symmetric=body.get("symmetric", False),
+            extraction=body.get("extraction", "llm"),
         )
         for name, body in raw["edge_types"].items()
     }
