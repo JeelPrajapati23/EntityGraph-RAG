@@ -56,6 +56,17 @@
   code { font-size: 13px; }
   details summary { cursor: pointer; color: var(--muted); font-size: 13px; margin-top: 16px; }
   .sev { font-size: 12px; font-weight: 600; }
+  .scanbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; font-size: 13px; }
+  .scanbar button { background: transparent; color: var(--accent); border: 1px solid var(--accent); padding: 5px 12px; }
+  .scanbar label { color: var(--muted); display: flex; align-items: center; gap: 4px; }
+  section.dragover { outline: 2px dashed var(--accent); outline-offset: -6px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+  .chip { padding: 1px 8px; border-radius: 99px; font-size: 12px; font-weight: 600; color: #fff; }
+  .row { padding: 8px 0; border-top: 1px solid var(--border); }
+  .chain { font-size: 12px; overflow-wrap: anywhere; }
+  .tag { font-size: 11px; color: var(--muted); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
+  .plan ol { padding-left: 18px; margin: 4px 0 0; }
+  .plan li { margin-bottom: 4px; font-size: 13px; }
   #graph { flex: 1; min-height: 300px; margin-top: 12px; border: 1px solid var(--border); border-radius: 6px; }
 </style>
 </head>
@@ -63,7 +74,7 @@
 <header>
   <h1>reachfix</h1>
   <p>Which npm projects a vulnerability reaches, through which dependency chain, and the smallest upgrade that fixes it.
-     Every answer cites graph facts [G#] and advisory text [A#].</p>
+     Every answer cites graph facts [G#] and advisory text [A#]. You can also scan your own package-lock.json.</p>
 </header>
 <main>
   <section>
@@ -71,6 +82,13 @@
       <input id="q" placeholder="e.g. How do I fix CVE-2024-45296 in express@4.17.1?" autocomplete="off">
       <button id="ask-btn">Ask</button>
     </form>
+    <div class="scanbar">
+      <button id="scan-btn" type="button">Scan a package-lock.json</button>
+      <input id="scan-file" type="file" accept=".json,application/json" hidden>
+      <label title="Query OSV.dev for versions outside the dataset and the npm registry for release data">
+        <input id="scan-live" type="checkbox" checked> live OSV + registry lookups</label>
+      <span class="muted">or drop the file here</span>
+    </div>
     <div id="output"><p class="muted">Try: "Is axios@0.21.1 exposed to CVE-2022-0155?", "Which projects are affected by
       CVE-2022-24999?", "What should mocha 8.4.0 upgrade to so it stops pulling in a vulnerable minimatch?".
       The graph panel shows the dependency chains behind graph answers.</p></div>
@@ -85,7 +103,7 @@
   </section>
 </main>
 <script>
-const TYPE_COLORS = { Package: "#7a4fc4", PackageVersion: "#2f5fd0", Vulnerability: "#c0392b",
+const TYPE_COLORS = { Project: "#e67e22", Package: "#7a4fc4", PackageVersion: "#2f5fd0", Vulnerability: "#c0392b",
                       Maintainer: "#1f8a5b", License: "#5c6770", ExploitCondition: "#b5621b" };
 const SEV_COLORS = { CRITICAL: "#c0392b", HIGH: "#d35400", MODERATE: "#b7950b", LOW: "#5c6770" };
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -170,6 +188,110 @@ document.getElementById("ask").addEventListener("submit", async ev => {
   } finally {
     btn.disabled = false;
   }
+});
+
+// Plan steps are plain text with `code` spans (npm commands, overrides snippets).
+const stepHtml = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
+const sevChip = (sev, n) =>
+  `<span class="chip" style="background:${SEV_COLORS[sev] ?? "#888"}">${esc(sev)}${n != null ? ` ${n}` : ""}</span>`;
+const shortId = id => String(id).replace(/^npm:/, "").replace(/^project:/, "");
+
+function scanHtml(r, fileName) {
+  const t = r.totals, cov = r.coverage, live = cov.live_osv, rem = r.remediation, SHOW = 25;
+  const header = `
+    <span class="badge">scan</span> <strong>${esc(shortId(r.project.id))}</strong>
+    <span class="muted">from ${esc(fileName)}</span>
+    <p><strong>${t.advisories}</strong> advisories on <strong>${t.vulnerable_versions}</strong> vulnerable versions,
+       up to ${t.max_depth} hops deep${t.dev_only_advisories ? `; ${t.dev_only_advisories} only via devDependencies` : ""}.</p>
+    <div class="chips">${Object.entries(t.by_severity).map(([s, n]) => sevChip(s, n)).join("")}</div>
+    <div class="muted">${cov.checked} of ${cov.versions} installed versions checked against OSV${live
+      ? `; ${live.queried} queried live, ${live.advisories_added} advisories not in the dataset, our matching agrees with OSV on ${live.agree} of ${live.agree + live.only_ours + live.only_osv} pairs`
+      : ""}.</div>
+    ${r.warnings.map(w => `<div class="warn">${esc(w)}</div>`).join("")}`;
+
+  const seen = new Set(), rows = [];
+  for (const row of r.results) {  // one line per advisory, at its first (worst-severity, shallowest) row
+    if (seen.has(row.vulnerability_id)) continue;
+    seen.add(row.vulnerability_id);
+    rows.push(row);
+  }
+  const exposure = rows.slice(0, SHOW).map(row => `
+    <div class="row">
+      <span class="sev" style="color:${SEV_COLORS[row.severity] ?? "inherit"}">${esc(row.severity ?? "UNLABELED")}</span>
+      <a href="${esc(row.source_url ?? "https://osv.dev/vulnerability/" + row.vulnerability_id)}" target="_blank"
+         rel="noopener">${esc(row.vulnerability_id)}</a>
+      ${(row.aliases ?? []).filter(a => a.startsWith("CVE-")).map(esc).join(" ")}
+      ${row.dev_only ? `<span class="tag">dev</span>` : ""}
+      <div>${esc(row.summary)}</div>
+      <div class="chain muted">${row.path.map(shortId).map(esc).join(" → ")}</div>
+    </div>`).join("");
+  const moreRows = rows.length > SHOW ? `<p class="muted">and ${rows.length - SHOW} more advisories</p>` : "";
+
+  let plans = "";
+  if (rem) {
+    const rt = rem.totals;
+    plans = `<h3>Fix plans</h3>
+      <div class="muted">${rt.fully_resolved} of ${rem.total_results} fully resolved${
+        rt.vulnerable_copies > rem.total_results ? ` (the ${rem.total_results} worst of ${rt.vulnerable_copies})` : ""}${
+        rt.releases_fetched ? `; release data fetched for ${rt.releases_fetched} packages` : ""}.
+        "Fixed" means clear of the advisories checked here.</div>` +
+      rem.results.map(p => `
+        <div class="row plan">
+          <strong>${esc(shortId(p.version_id))}</strong> <span class="tag">${esc(p.plan.status.replaceAll("_", " "))}</span>
+          ${p.resolved ? "" : `<span class="tag" style="color:var(--warn)">not fully resolved</span>`}
+          ${p.dev_only ? `<span class="tag">dev</span>` : ""}
+          <span class="muted">${p.advisories.length} advisor${p.advisories.length === 1 ? "y" : "ies"}</span>
+          <ol>${p.actions.map(a => `<li>${stepHtml(a)}</li>`).join("")}</ol>
+        </div>`).join("");
+  }
+  return `${header}
+    ${exposure ? `<h3>Vulnerable dependencies</h3>${exposure}${moreRows}` : `<p>No known vulnerabilities reached.</p>`}
+    ${plans}`;
+}
+
+async function scanFile(file) {
+  const out = document.getElementById("output"), btn = document.getElementById("scan-btn");
+  const live = document.getElementById("scan-live").checked;
+  let lock;
+  try {
+    lock = JSON.parse(await file.text());
+  } catch {
+    out.innerHTML = `<p class="warn">${esc(file.name)} is not valid JSON; upload a package-lock.json.</p>`;
+    return;
+  }
+  btn.disabled = true;
+  out.innerHTML = `<p class="muted">Scanning ${esc(file.name)}${live
+    ? " with live OSV and registry lookups (the first scan of a new lockfile can take a few seconds)" : ""}…</p>`;
+  try {
+    const r = await call(`/scan?live=${live}`, { method: "POST", headers: { "Content-Type": "application/json" },
+                                                 body: JSON.stringify(lock) });
+    out.innerHTML = scanHtml(r, file.name);
+    if (r.subgraph.nodes.length) {
+      drawGraph(r.subgraph, `Vulnerable dependency chains in ${shortId(r.project.id)}` +
+                (r.total_results > 40 ? " (the 40 worst rows)" : ""), r.project.id);
+    }
+  } catch (err) {
+    out.innerHTML = `<p class="warn">${esc(err.message)}</p>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+const fileInput = document.getElementById("scan-file");
+document.getElementById("scan-btn").addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", () => {
+  if (fileInput.files[0]) scanFile(fileInput.files[0]);
+  fileInput.value = "";  // so choosing the same file again re-scans it
+});
+const dropZone = document.querySelector("main section");
+dropZone.addEventListener("dragover", ev => { ev.preventDefault(); dropZone.classList.add("dragover"); });
+dropZone.addEventListener("dragleave", ev => {
+  if (!dropZone.contains(ev.relatedTarget)) dropZone.classList.remove("dragover");
+});
+dropZone.addEventListener("drop", ev => {
+  ev.preventDefault();
+  dropZone.classList.remove("dragover");
+  if (ev.dataTransfer.files[0]) scanFile(ev.dataTransfer.files[0]);
 });
 
 document.getElementById("explore").addEventListener("submit", async ev => {

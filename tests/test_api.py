@@ -59,6 +59,7 @@ def test_health_reports_sizes(client):
 def test_index_serves_demo_page(client):
     resp = client.get("/")
     assert resp.status_code == 200 and "reachfix" in resp.text
+    assert 'id="scan-file"' in resp.text and "/scan?live=" in resp.text
 
 
 def test_explore_resolves_a_cve_to_its_advisory(client):
