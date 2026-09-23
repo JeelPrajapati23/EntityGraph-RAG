@@ -131,3 +131,10 @@ def test_synthesize_joins_versions_spaced_with_narrow_no_break_spaces(monkeypatc
     monkeypatch.setattr(synthesis_module, "generate_text", lambda *a, **k: "Upgrade express\u202f@\u202f4.22.0 [G1].")
     out = synthesize_answer(remediation_result(), client=None)
     assert out["answer"] == "Upgrade express@4.22.0 [G1]."
+
+
+def test_synthesize_strips_padding_inside_citation_brackets(monkeypatch):
+    monkeypatch.setattr(synthesis_module, "generate_text",
+                        lambda *a, **k: "Yes [ G1 ]. Upgrade [ G1, A2 ]; see [G1 ] and [ exact totals ].")
+    out = synthesize_answer(remediation_result(), client=None)
+    assert out["answer"] == "Yes [G1]. Upgrade [G1, A2]; see [G1] and [ exact totals ]."

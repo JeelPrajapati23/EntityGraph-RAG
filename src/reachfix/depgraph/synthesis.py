@@ -40,6 +40,8 @@ ANSWER_NORMALIZATION = str.maketrans({"\u2010": "-", "\u2011": "-", "\u2012": "-
 ADVISORY_ID_RE = re.compile(r"\b(CVE-\d{4}-\d{4,}|GHSA(?:-[0-9a-z]{4}){3}|MAL-\d{4}-\d+)\b", re.IGNORECASE)
 # "jws @3.2.2" / "jws @ 3.2.2" -> "jws@3.2.2": the model sometimes spaces out package@version.
 SPACED_VERSION_RE = re.compile(r"(?<=[\w.-]) ?@ ?(?=\d)")
+# "[ G1 ]" / "[ G1, A2 ]" -> "[G1]" / "[G1, A2]": the model sometimes pads citation brackets.
+PADDED_MARKERS_RE = re.compile(r"\[\s+([GA]\d+(?:\s*,\s*[GA]\d+)*)\s*\]|\[([GA]\d+(?:\s*,\s*[GA]\d+)*)\s+\]")
 MARKER_GROUP_RE = re.compile(r"\[([^\]]+)\]")
 MARKER_RE = re.compile(r"\b([GA]\d+)\b")
 PACKAGE_VERSION_RE = re.compile(r"(?<![\w/@.-])((?:@[\w.-]+/)?[\w.-]+)@(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]*[0-9A-Za-z])?)")
@@ -274,6 +276,7 @@ def synthesize_answer(result: dict, *, client: Groq, model_name: str = DEFAULT_M
     prompt = build_user_prompt(result["query"], evidence, result.get("warnings", []))
     answer = generate_text(client, system_prompt=SYSTEM_PROMPT, user_prompt=prompt, model_name=model_name)
     answer = SPACED_VERSION_RE.sub("@", answer.translate(ANSWER_NORMALIZATION))
+    answer = PADDED_MARKERS_RE.sub(lambda m: f"[{m[1] or m[2]}]", answer)
     return {
         "query": result["query"],
         "route": result["route"],
