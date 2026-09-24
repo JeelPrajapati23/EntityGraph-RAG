@@ -1,5 +1,7 @@
 # reachfix
 
+[![CI](https://github.com/JeelPrajapati23/reachfix/actions/workflows/ci.yml/badge.svg)](https://github.com/JeelPrajapati23/reachfix/actions/workflows/ci.yml)
+
 **Live demo: [reachfix-latest.onrender.com](https://reachfix-latest.onrender.com)**
 (free tier: the first request after 15 idle minutes takes about a minute
 while the service wakes up)
