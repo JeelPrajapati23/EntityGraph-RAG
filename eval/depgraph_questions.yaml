@@ -18,9 +18,8 @@
 #     versions depend on the registry as fetched, so re-check them after a
 #     --refresh of the release metadata.
 #
-# Don't tune the classifier prompt against this set: it's small, and the
-# finance router's history (CLAUDE.md) shows prompt edits trading one
-# question for another. It measures; it isn't a training set.
+# Don't tune the classifier prompt against this set: it's small, and
+# prompt edits made to fix one question tend to break another. It measures; it isn't a training set.
 
 questions:
   # relational / exposure

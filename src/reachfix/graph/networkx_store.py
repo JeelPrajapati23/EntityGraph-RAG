@@ -6,9 +6,9 @@ local development; the GraphStore interface means a Neo4j AuraDB backend
 touching any pipeline or query code written against GraphStore.
 
 A MultiDiGraph, keyed per edge by relation name, is what gives upsert_edge
-its merge behavior almost for free: a second SUPPLIES edge between the same
-two nodes lands on the same (u, v, "SUPPLIES") slot instead of creating a
-parallel edge.
+its merge behavior almost for free: a second DEPENDS_ON edge between the
+same two nodes lands on the same (u, v, "DEPENDS_ON") slot instead of
+creating a parallel edge.
 """
 
 import pickle

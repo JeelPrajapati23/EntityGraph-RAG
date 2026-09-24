@@ -1,47 +1,48 @@
 from reachfix.graph import NetworkXGraphStore
 
-TSMC = {"entity_id": "Company:tsmc", "canonical_name": "TSMC", "entity_type": "Company", "aliases": ["TSMC"]}
-NVIDIA = {"entity_id": "Company:nvidia", "canonical_name": "NVIDIA", "entity_type": "Company", "aliases": ["NVIDIA"]}
+EXPRESS = {"entity_id": "npm:express@4.17.1", "canonical_name": "express@4.17.1", "entity_type": "PackageVersion",
+           "aliases": ["express@4.17.1"]}
+QS = {"entity_id": "npm:qs@6.7.0", "canonical_name": "qs@6.7.0", "entity_type": "PackageVersion", "aliases": ["qs@6.7.0"]}
 
 EDGE_1 = {
-    "subject_id": "Company:tsmc", "object_id": "Company:nvidia", "relation": "SUPPLIES",
+    "subject_id": "npm:express@4.17.1", "object_id": "npm:qs@6.7.0", "relation": "DEPENDS_ON",
     "confidence": 0.8, "source_chunk_id": "c1", "source_doc_id": "d1", "extracted_at": "t1",
 }
 EDGE_2 = {
-    "subject_id": "Company:tsmc", "object_id": "Company:nvidia", "relation": "SUPPLIES",
+    "subject_id": "npm:express@4.17.1", "object_id": "npm:qs@6.7.0", "relation": "DEPENDS_ON",
     "confidence": 0.95, "source_chunk_id": "c2", "source_doc_id": "d2", "extracted_at": "t2",
 }
-EDGE_COMPETES = {
-    "subject_id": "Company:tsmc", "object_id": "Company:nvidia", "relation": "COMPETES_WITH",
+EDGE_OTHER = {
+    "subject_id": "npm:express@4.17.1", "object_id": "npm:qs@6.7.0", "relation": "VERSION_OF",
     "confidence": 0.5, "source_chunk_id": "c3", "source_doc_id": "d1", "extracted_at": "t3",
 }
 
 
 def _store_with_nodes():
     store = NetworkXGraphStore()
-    store.upsert_entity(TSMC)
-    store.upsert_entity(NVIDIA)
+    store.upsert_entity(EXPRESS)
+    store.upsert_entity(QS)
     return store
 
 
 def test_upsert_entity_then_get():
     store = _store_with_nodes()
-    assert store.get_entity("Company:tsmc") == TSMC
+    assert store.get_entity("npm:express@4.17.1") == EXPRESS
 
 
 def test_get_entity_missing_returns_none():
     store = NetworkXGraphStore()
-    assert store.get_entity("Company:nope") is None
+    assert store.get_entity("npm:nope@0.0.0") is None
 
 
 def test_upsert_edge_creates_edge_with_single_provenance():
     store = _store_with_nodes()
     store.upsert_edge(EDGE_1)
 
-    neighbors = store.neighbors("Company:tsmc", direction="out")
+    neighbors = store.neighbors("npm:express@4.17.1", direction="out")
     assert len(neighbors) == 1
-    assert neighbors[0]["entity_id"] == "Company:nvidia"
-    assert neighbors[0]["relation"] == "SUPPLIES"
+    assert neighbors[0]["entity_id"] == "npm:qs@6.7.0"
+    assert neighbors[0]["relation"] == "DEPENDS_ON"
     assert len(neighbors[0]["provenance"]) == 1
 
 
@@ -51,7 +52,7 @@ def test_repeated_edge_merges_provenance_instead_of_duplicating():
     store.upsert_edge(EDGE_2)
 
     assert store.edge_count() == 1
-    neighbors = store.neighbors("Company:tsmc", relation="SUPPLIES", direction="out")
+    neighbors = store.neighbors("npm:express@4.17.1", relation="DEPENDS_ON", direction="out")
     assert len(neighbors) == 1
     assert len(neighbors[0]["provenance"]) == 2
     assert neighbors[0]["confidence"] == 0.95  # max of 0.8, 0.95
@@ -60,22 +61,22 @@ def test_repeated_edge_merges_provenance_instead_of_duplicating():
 def test_different_relation_between_same_pair_is_a_separate_edge():
     store = _store_with_nodes()
     store.upsert_edge(EDGE_1)
-    store.upsert_edge(EDGE_COMPETES)
+    store.upsert_edge(EDGE_OTHER)
 
     assert store.edge_count() == 2
-    relations = {n["relation"] for n in store.neighbors("Company:tsmc", direction="out")}
-    assert relations == {"SUPPLIES", "COMPETES_WITH"}
+    relations = {n["relation"] for n in store.neighbors("npm:express@4.17.1", direction="out")}
+    assert relations == {"DEPENDS_ON", "VERSION_OF"}
 
 
 def test_neighbors_direction_filtering():
     store = _store_with_nodes()
     store.upsert_edge(EDGE_1)
 
-    assert len(store.neighbors("Company:tsmc", direction="out")) == 1
-    assert len(store.neighbors("Company:tsmc", direction="in")) == 0
-    assert len(store.neighbors("Company:nvidia", direction="in")) == 1
-    assert len(store.neighbors("Company:nvidia", direction="out")) == 0
-    assert len(store.neighbors("Company:tsmc", direction="both")) == 1
+    assert len(store.neighbors("npm:express@4.17.1", direction="out")) == 1
+    assert len(store.neighbors("npm:express@4.17.1", direction="in")) == 0
+    assert len(store.neighbors("npm:qs@6.7.0", direction="in")) == 1
+    assert len(store.neighbors("npm:qs@6.7.0", direction="out")) == 0
+    assert len(store.neighbors("npm:express@4.17.1", direction="both")) == 1
 
 
 def test_node_and_edge_counts():
@@ -87,7 +88,7 @@ def test_node_and_edge_counts():
 
 def test_load_bulk_loads_entities_and_edges():
     store = NetworkXGraphStore()
-    store.load([TSMC, NVIDIA], [EDGE_1])
+    store.load([EXPRESS, QS], [EDGE_1])
     assert store.node_count() == 2
     assert store.edge_count() == 1
 
@@ -102,7 +103,7 @@ def test_save_and_load_roundtrip(tmp_path):
 
     assert reloaded.node_count() == store.node_count()
     assert reloaded.edge_count() == store.edge_count()
-    assert reloaded.get_entity("Company:tsmc") == TSMC
+    assert reloaded.get_entity("npm:express@4.17.1") == EXPRESS
 
 
 def test_upsert_edge_accepts_deterministic_edges_without_chunk_or_confidence():

@@ -2,7 +2,7 @@ from reachfix.graph import NetworkXGraphStore, ego_subgraph
 
 
 def _entity(entity_id, name):
-    return {"entity_id": entity_id, "canonical_name": name, "entity_type": "Company", "aliases": [name]}
+    return {"entity_id": entity_id, "canonical_name": name, "entity_type": "PackageVersion", "aliases": [name]}
 
 
 def _edge(subject_id, relation, object_id, chunk_id="c1"):
@@ -13,40 +13,41 @@ def _edge(subject_id, relation, object_id, chunk_id="c1"):
 
 
 def _chain_store():
-    # asml --SUPPLIES--> tsmc --SUPPLIES--> nvidia --COMPETES_WITH--> amd
+    # express --DEPENDS_ON--> body-parser --DEPENDS_ON--> qs --HAS_VULNERABILITY--> ghsa
     store = NetworkXGraphStore()
     store.load(
-        [_entity("asml", "ASML"), _entity("tsmc", "TSMC"), _entity("nvidia", "NVIDIA"), _entity("amd", "AMD")],
-        [_edge("asml", "SUPPLIES", "tsmc"), _edge("tsmc", "SUPPLIES", "nvidia"),
-         _edge("nvidia", "COMPETES_WITH", "amd")],
+        [_entity("express", "express@4.17.1"), _entity("body-parser", "body-parser@1.19.0"),
+         _entity("qs", "qs@6.7.0"), _entity("ghsa", "GHSA-hrpp-h998-j3pp")],
+        [_edge("express", "DEPENDS_ON", "body-parser"), _edge("body-parser", "DEPENDS_ON", "qs"),
+         _edge("qs", "HAS_VULNERABILITY", "ghsa")],
     )
     return store
 
 
 def test_depth_one_covers_both_directions():
-    sub = ego_subgraph(_chain_store(), "nvidia", depth=1)
+    sub = ego_subgraph(_chain_store(), "qs", depth=1)
 
-    assert {n["entity_id"] for n in sub["nodes"]} == {"nvidia", "tsmc", "amd"}
+    assert {n["entity_id"] for n in sub["nodes"]} == {"qs", "body-parser", "ghsa"}
     assert {(e["source"], e["relation"], e["target"]) for e in sub["edges"]} == {
-        ("tsmc", "SUPPLIES", "nvidia"), ("nvidia", "COMPETES_WITH", "amd"),
+        ("body-parser", "DEPENDS_ON", "qs"), ("qs", "HAS_VULNERABILITY", "ghsa"),
     }
 
 
 def test_depth_two_reaches_second_hop_without_duplicate_edges():
-    sub = ego_subgraph(_chain_store(), "nvidia", depth=2)
+    sub = ego_subgraph(_chain_store(), "qs", depth=2)
 
-    assert {n["entity_id"] for n in sub["nodes"]} == {"asml", "tsmc", "nvidia", "amd"}
+    assert {n["entity_id"] for n in sub["nodes"]} == {"express", "body-parser", "qs", "ghsa"}
     assert len(sub["edges"]) == 3
 
 
 def test_nodes_carry_display_fields():
-    sub = ego_subgraph(_chain_store(), "amd", depth=1)
-    amd = next(n for n in sub["nodes"] if n["entity_id"] == "amd")
-    assert amd == {"entity_id": "amd", "canonical_name": "AMD", "entity_type": "Company"}
+    sub = ego_subgraph(_chain_store(), "ghsa", depth=1)
+    ghsa = next(n for n in sub["nodes"] if n["entity_id"] == "ghsa")
+    assert ghsa == {"entity_id": "ghsa", "canonical_name": "GHSA-hrpp-h998-j3pp", "entity_type": "PackageVersion"}
 
 
 def test_max_nodes_caps_expansion():
-    sub = ego_subgraph(_chain_store(), "nvidia", depth=2, max_nodes=2)
+    sub = ego_subgraph(_chain_store(), "qs", depth=2, max_nodes=2)
     assert len(sub["nodes"]) == 2
     node_ids = {n["entity_id"] for n in sub["nodes"]}
     assert all(e["source"] in node_ids and e["target"] in node_ids for e in sub["edges"])

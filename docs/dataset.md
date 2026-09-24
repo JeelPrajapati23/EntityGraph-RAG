@@ -1,9 +1,5 @@
 # Dataset notes
 
-> The project was retargeted from SEC filings (schema v1, `config/companies.yaml`)
-> to npm dependency/vulnerability exposure (schema v2, `config/projects.yaml`).
-> The finance-era notes are in git history.
-
 ## Scope
 
 - **Ecosystem:** npm only for the MVP. npm trees are denser and deeper than
@@ -52,8 +48,8 @@ up. The path segments alone don't give the edges.
 | Maintainers, license, publish time, deprecation | `registry.npmjs.org/<pkg>` | Maintainer emails are dropped and only usernames are kept |
 
 Every fetched record goes into a `manifest.jsonl` with package, ecosystem,
-version, source URL and fetch time, the same provenance discipline the
-finance version used.
+version, source URL and fetch time, so every edge can point back to the
+record it came from.
 
 ## Acquisition (Phase 1)
 
@@ -113,8 +109,7 @@ uv run python scripts/build_advisory_chunks.py   # → data/processed/depgraph/a
 ```
 
 Both read the Phase 1 manifests and fully rewrite their output each run.
-Outputs go under `data/processed/depgraph/` (kept apart from the finance
-pipeline's `data/processed/` files while both existed).
+Outputs go under `data/processed/depgraph/`.
 
 **Dependency edges** (`reachfix.npm.dependencies`). For each
 dependency an installed package declares, the resolver finds the copy
@@ -272,9 +267,8 @@ highest fix across all of them.
 advisory id resolves to itself. A CVE resolves to every advisory aliasing
 it. `name@version` resolves to that PackageVersion. A package name
 matches case-insensitively, then fuzzily with `-_./` treated alike
-(`follow redirects` → `follow-redirects`). The finance-era
-`normalize_name` is not reused: it drops words like "co" and "group",
-which are real npm package names.
+(`follow redirects` → `follow-redirects`). Names are not stripped of
+words like "co" or "group", which are real npm package names.
 
 ## Graph construction (Phase 5)
 
@@ -282,9 +276,8 @@ which are real npm package names.
 uv run python scripts/build_depgraph.py  # → data/processed/depgraph/graph.pkl
 ```
 
-The finance-era `GraphStore` interface and `NetworkXGraphStore` are
-reused. `upsert_edge` was generalized, and finance edges load exactly as
-before:
+The graph lives in `NetworkXGraphStore` (behind the `GraphStore`
+interface). `upsert_edge` accepts:
 - provenance fields are optional, and `confidence` defaults to 1.0 for
   deterministic and derived edges
 - an edge can bring a `provenance` list and a `properties` dict
@@ -334,8 +327,8 @@ uv run python scripts/search_advisories.py "slow regex on crafted input" [--pack
 uv run python scripts/eval_advisory_retrieval.py                          # compares the built variants
 ```
 
-The finance retrieval code (`VectorIndex`, `embed_chunks`, the embedding
-cache) is reused unchanged. The new part is what gets embedded.
+Retrieval is `VectorIndex` (brute-force cosine), `embed_chunks` and a
+content-keyed embedding cache. The interesting part is what gets embedded.
 
 **Silent truncation.** `all-MiniLM-L6-v2` reads 256 word-pieces, and the
 HF endpoint drops the rest without an error. The 802-word chunk embeds
@@ -354,7 +347,7 @@ first N words):
   aren't served for feature extraction.
 
 **Variants** (`reachfix.npm.advisory_index`):
-- `minilm_whole`: the raw chunk, truncated, as the finance pipeline did
+- `minilm_whole`: the raw chunk, silently truncated (the baseline)
 - `minilm_windowed`: ~110-word windows overlapping by 20 words, each
   prefixed with the advisory's summary and packages. Search rolls window
   hits up to their parent chunk (`retrieval/windows.py`).
@@ -395,10 +388,9 @@ uv run python scripts/route_depgraph.py "Is axios@0.21.1 exposed to CVE-2022-015
 uv run python scripts/eval_depgraph_router.py                                          # eval/depgraph_questions.yaml
 ```
 
-`reachfix.depgraph` was built as a separate router from the finance one
-(`router/`, since removed). The finance router's `neighbors`/`two_hop`/`common_neighbors`
-patterns can't express "exposed through a dependency 9 hops deep in this
-project's lockfile". Its shape is kept: one Groq classification call,
+Generic `neighbors`/`two_hop`/`common_neighbors` graph patterns can't
+express "exposed through a dependency 9 hops deep in this project's
+lockfile", so the router has domain patterns. Its shape: one Groq classification call,
 Literal types generated from the schema, one retry, then a fall-back to
 semantic search, and a plain `if`/`elif` dispatch.
 
@@ -439,8 +431,8 @@ CVE-2022-24999.
   axios's whole tree and ranked axios's own advisories first. That's an
   entity-extraction miss.
 
-The prompt was not tuned to fix either one. The set is small, and doing
-that would repeat the finance router's overfitting (see CLAUDE.md).
+The prompt was not tuned to fix either one. The set is small, and tuning
+a prompt to it trades one question for another (overfitting).
 
 ## Answer synthesis (Phase 8)
 
@@ -449,9 +441,8 @@ uv run python scripts/ask_depgraph.py "Is axios@0.21.1 exposed to CVE-2022-0155?
 uv run python scripts/eval_depgraph_router.py --answers                           # routing + answer checks
 ```
 
-`reachfix.depgraph.synthesis` keeps three things apart. This
-follows the finance rule that the evidence given to the model is not the
-preview shown to the reader.
+`reachfix.depgraph.synthesis` keeps three things apart. The evidence
+given to the model is not the preview shown to the reader.
 
 - **Evidence for the model.** Graph facts `[G#]` are readable chains in
   the plan's form (`axios@0.21.1 → depends_on → follow-redirects@1.13.1

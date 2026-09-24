@@ -2,9 +2,9 @@ from reachfix.retrieval import pipeline as pipeline_module
 from reachfix.retrieval.pipeline import embed_chunks
 
 CHUNKS = [
-    {"chunk_id": "d::0::0", "text": "TSMC fabricates chips for NVIDIA."},
-    {"chunk_id": "d::0::1", "text": "NVIDIA competes with AMD and Intel."},
-    {"chunk_id": "d::0::2", "text": "Jensen Huang is CEO of NVIDIA."},
+    {"chunk_id": "GHSA-a::0", "text": "qs before 6.7.3 allows prototype pollution."},
+    {"chunk_id": "GHSA-a::1", "text": "Upgrade qs to a fixed version."},
+    {"chunk_id": "GHSA-b::0", "text": "minimatch is vulnerable to ReDoS via a crafted pattern."},
 ]
 
 

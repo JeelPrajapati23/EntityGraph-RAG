@@ -12,9 +12,8 @@ In order:
    ("follow redirects" -> follow-redirects). Only one best match, at
    FUZZY_THRESHOLD or above.
 
-Names are not normalized beyond case and separators: dropping corporate
-words like "co" or "group", as company-name matching does, would break real
-npm package names.
+Names are not normalized beyond case and separators: dropping words like
+"co" or "group" would break real npm package names.
 """
 
 import re

@@ -1,5 +1,9 @@
 # reachfix
 
+**Live demo: [reachfix-latest.onrender.com](https://reachfix-latest.onrender.com)**
+(free tier: the first request after 15 idle minutes takes about a minute
+while the service wakes up)
+
 Which of your projects does a vulnerability reach, through which chain of
 transitive dependencies, and what is the smallest upgrade that fixes it
 without breaking the version ranges your other dependencies declare?
@@ -44,10 +48,16 @@ The npm pipeline ("DepGraph") runs end to end over 20 date-pinned projects
   `[A#]` advisory text with osv.dev links. They are checked for advisory
   ids and package versions that aren't in the evidence.
 
-The engine was first built on SEC filings and earnings calls. That finance
-pipeline was removed after the retarget, and it is in the git history.
-
 ## Try it
+
+The [hosted demo](https://reachfix-latest.onrender.com) has three tabs: ask
+a question (cited answer plus the dependency chains drawn as a graph),
+explore the graph around a package, version or advisory, and scan your own
+`package-lock.json` for exposure and fix plans. Questions are rate-limited
+(10 per IP per hour, 100 per day overall); scans and graph exploration are
+not. It runs from a prebuilt image (`Dockerfile`) on Render.
+
+Locally:
 
 ```bash
 uv run python scripts/ask_depgraph.py "Is axios@0.21.1 exposed to CVE-2022-0155?"

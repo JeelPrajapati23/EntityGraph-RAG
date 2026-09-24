@@ -1,10 +1,9 @@
 # DepGraph entity/relation schema — v2
 #
-# Retargets the pipeline from SEC filings (v1, removed with the finance
-# pipeline; see git history) to npm dependency and vulnerability exposure.
+# npm dependency and vulnerability exposure.
 # A new domain is a new schema version, not an in-place edit.
 #
-# Unlike v1, most edges here are NOT LLM-extracted. Each edge type declares
+# Most edges here are NOT LLM-extracted. Each edge type declares
 # an `extraction` method:
 #   - deterministic: parsed from lockfiles / registry metadata / OSV's
 #     structured fields. Ground truth — no hallucination risk, confidence 1.0.
