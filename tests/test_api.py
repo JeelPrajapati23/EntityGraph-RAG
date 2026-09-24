@@ -52,9 +52,10 @@ def client(store):
         yield test_client
 
 
-def test_health_reports_sizes(client):
+def test_health_reports_sizes(client, monkeypatch):
+    monkeypatch.setenv("REACHFIX_VERSION", "abc123")
     assert client.get("/health").json() == {"status": "ok", "nodes": 3, "edges": 2, "advisory_chunks": 1,
-                                            "remediation": False}
+                                            "remediation": False, "version": "abc123"}
 
 
 def test_index_serves_demo_page(client):

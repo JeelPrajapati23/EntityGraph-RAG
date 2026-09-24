@@ -1,0 +1,14 @@
+# The build outputs the API loads (api/resources.py), as a data-only image. data/ is gitignored, so
+# CI can't see these files: the app image (Dockerfile) copies them from this image instead. Rebuild
+# and push it from a machine that has data/ whenever the data is rebuilt, then re-run CI's deploy
+# (Actions → CI → Run workflow) so the app image picks it up:
+#   docker build -f Dockerfile.data -t ghcr.io/jeelprajapati23/reachfix-data . && docker push ghcr.io/jeelprajapati23/reachfix-data
+FROM scratch
+LABEL org.opencontainers.image.source=https://github.com/JeelPrajapati23/reachfix
+COPY data/processed/depgraph/graph.pkl \
+     data/processed/depgraph/nodes.jsonl \
+     data/processed/depgraph/advisory_chunks.jsonl \
+     data/processed/depgraph/advisory_index_minilm_windowed.ids.json \
+     data/processed/depgraph/advisory_index_minilm_windowed.vectors.npy \
+     data/processed/depgraph/releases.json \
+     /depgraph/

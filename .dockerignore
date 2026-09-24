@@ -1,4 +1,5 @@
-# Everything is excluded except what the Dockerfile copies.
+# Everything is excluded except what the Dockerfile copies. The data comes from the
+# reachfix-data image (Dockerfile.data, which has its own ignore file).
 *
 !pyproject.toml
 !uv.lock
@@ -7,9 +8,4 @@
 !src/
 !schema/
 !config/
-!data/processed/depgraph/graph.pkl
-!data/processed/depgraph/nodes.jsonl
-!data/processed/depgraph/advisory_chunks.jsonl
-!data/processed/depgraph/advisory_index_minilm_windowed.*
-!data/processed/depgraph/releases.json
 **/__pycache__

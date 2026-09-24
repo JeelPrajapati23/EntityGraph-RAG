@@ -1,9 +1,15 @@
-# reachfix API + demo page, deployed on Render from a prebuilt image (data/ is gitignored, so the
-# image is built locally, where the build outputs exist, and pushed to ghcr.io):
-#   docker build -t ghcr.io/jeelprajapati23/reachfix . && docker push ghcr.io/jeelprajapati23/reachfix
-#   docker run --rm -p 7860:7860 --env-file .env ghcr.io/jeelprajapati23/reachfix   # local check
+# reachfix API + demo page, deployed on Render from ghcr.io. CI (.github/workflows/ci.yml) builds
+# and pushes this image and triggers the Render deploy on every code change to main. data/ is
+# gitignored, so the build outputs come from the reachfix-data image (see Dockerfile.data).
+# Local build and check:
+#   docker build -t ghcr.io/jeelprajapati23/reachfix .
+#   docker run --rm -p 7860:7860 --env-file .env ghcr.io/jeelprajapati23/reachfix
 # GROQ_API_KEY and HF_TOKEN come from the environment (host secrets); no key is baked in.
+ARG DATA_IMAGE=ghcr.io/jeelprajapati23/reachfix-data:latest
+FROM ${DATA_IMAGE} AS data
+
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+LABEL org.opencontainers.image.source=https://github.com/JeelPrajapati23/reachfix
 
 # Non-root; the live OSV / registry caches are written under data/raw/.
 RUN useradd -m -u 1000 user
@@ -19,23 +25,21 @@ WORKDIR /home/user/app
 COPY --chown=user pyproject.toml uv.lock README.md LICENSE ./
 RUN uv sync --frozen --no-dev --no-install-project
 
+# Only what the API loads (api/resources.py): graph, node lookup, advisory chunks + index, releases.
+COPY --from=data --chown=user /depgraph/ ./data/processed/depgraph/
+
 COPY --chown=user src ./src
 COPY --chown=user schema ./schema
 COPY --chown=user config ./config
 RUN uv sync --frozen --no-dev
 
-# Only what the API loads (api/resources.py): graph, node lookup, advisory chunks + index, releases.
-COPY --chown=user data/processed/depgraph/graph.pkl \
-     data/processed/depgraph/nodes.jsonl \
-     data/processed/depgraph/advisory_chunks.jsonl \
-     data/processed/depgraph/advisory_index_minilm_windowed.ids.json \
-     data/processed/depgraph/advisory_index_minilm_windowed.vectors.npy \
-     data/processed/depgraph/releases.json \
-     ./data/processed/depgraph/
-
 # /query spends Groq tokens shared by every visitor (see api/ratelimit.py).
 ENV REACHFIX_QUERY_LIMIT_PER_IP_HOUR=10 \
     REACHFIX_QUERY_LIMIT_PER_DAY=100
+
+# The commit this image was built from, reported by /health (CI waits on it after a deploy).
+ARG REACHFIX_VERSION=dev
+ENV REACHFIX_VERSION=${REACHFIX_VERSION}
 
 # Render sets PORT itself; 7860 is the local default.
 ENV PORT=7860

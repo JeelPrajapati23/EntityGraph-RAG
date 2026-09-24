@@ -15,6 +15,7 @@ Endpoints:
 Rebuilding the data is done with the scripts/ build steps, not over HTTP.
 """
 
+import os
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -71,6 +72,7 @@ def create_app(resources: Resources | None = None, loader: Callable[[], Resource
             "edges": ctx.store.edge_count(),
             "advisory_chunks": len(ctx.chunks_by_id),
             "remediation": ctx.releases is not None,
+            "version": os.environ.get("REACHFIX_VERSION", "dev"),  # the image's commit (Dockerfile)
         }
 
     @app.post("/query")

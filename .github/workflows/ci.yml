@@ -4,11 +4,11 @@ on:
   push:
     branches: [main]
   pull_request:
-  workflow_dispatch:
+  workflow_dispatch:  # on main: test, then always build and deploy (e.g. after pushing a new reachfix-data image)
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}  # never cancel a deploy halfway
 
 permissions:
   contents: read
@@ -29,3 +29,83 @@ jobs:
 
       # Synthetic fixtures only: no data/, no Groq/HF keys, no network.
       - run: uv run --locked pytest -q
+
+  # Build the image, push it to ghcr.io and deploy it on Render. The data comes from the
+  # reachfix-data image (Dockerfile.data), since data/ isn't in git.
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/jeelprajapati23/reachfix
+      APP_URL: https://reachfix-latest.onrender.com
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # Docs- or tests-only pushes don't change the image, so they don't redeploy.
+      - name: Decide whether the image changed
+        id: changes
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          deploy=true
+          if [ "$GITHUB_EVENT_NAME" = push ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            git diff --name-only "$BEFORE" "$GITHUB_SHA" \
+              | grep -qE '^(src/|schema/|config/|pyproject\.toml$|uv\.lock$|Dockerfile|\.dockerignore$)' || deploy=false
+          fi
+          echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
+          echo "deploy=$deploy"
+
+      - uses: docker/setup-buildx-action@v3
+        if: steps.changes.outputs.deploy == 'true'
+
+      - uses: docker/login-action@v3
+        if: steps.changes.outputs.deploy == 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        if: steps.changes.outputs.deploy == 'true'
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
+          build-args: REACHFIX_VERSION=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trigger the Render deploy
+        if: steps.changes.outputs.deploy == 'true'
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::error::Set the RENDER_DEPLOY_HOOK_URL repository secret (Render → service → Settings → Deploy Hook)."
+            exit 1
+          fi
+          # Deploy this exact build, not whatever :latest points to by the time Render pulls.
+          img=$(jq -rn --arg v "$IMAGE:sha-$GITHUB_SHA" '$v|@uri')
+          curl -fsS -o /dev/null -X POST "$HOOK&imgURL=$img"
+
+      # /health reports the image's commit, so this waits until the new build is the one serving.
+      - name: Wait for the new version to go live
+        if: steps.changes.outputs.deploy == 'true'
+        run: |
+          for i in $(seq 1 60); do
+            version=$(curl -fsS -m 60 "$APP_URL/health" | jq -r '.version // empty' || true)
+            if [ "$version" = "$GITHUB_SHA" ]; then echo "Live: $APP_URL ($version)"; exit 0; fi
+            echo "Serving ${version:-nothing yet}; waiting..."
+            sleep 20
+          done
+          echo "::error::$APP_URL did not report $GITHUB_SHA within 20 minutes. Check the Render dashboard."
+          exit 1
