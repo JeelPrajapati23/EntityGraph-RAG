@@ -18,9 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v10
         with:
           enable-cache: true
 
@@ -44,7 +44,7 @@ jobs:
       IMAGE: ghcr.io/jeelprajapati23/reachfix
       APP_URL: https://reachfix-latest.onrender.com
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -57,22 +57,22 @@ jobs:
           deploy=true
           if [ "$GITHUB_EVENT_NAME" = push ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
             git diff --name-only "$BEFORE" "$GITHUB_SHA" \
-              | grep -qE '^(src/|schema/|config/|pyproject\.toml$|uv\.lock$|Dockerfile|\.dockerignore$)' || deploy=false
+              | grep -qE '^(src/|schema/|config/|pyproject\.toml$|uv\.lock$|Dockerfile|\.dockerignore$|\.github/workflows/)' || deploy=false
           fi
           echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
           echo "deploy=$deploy"
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
         if: steps.changes.outputs.deploy == 'true'
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         if: steps.changes.outputs.deploy == 'true'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         if: steps.changes.outputs.deploy == 'true'
         with:
           context: .
