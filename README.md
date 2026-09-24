@@ -23,6 +23,8 @@ from advisory free text, and writing answers that cite the graph facts and
 advisory text they rest on. See [`docs/dataset.md`](docs/dataset.md) and
 [`schema/v2.yaml`](schema/v2.yaml).
 
+![Scanning a package-lock.json: 14 advisories reach my-api through express, each chain drawn by hop, with the fix (upgrade express to 4.22.0) as a green "after fix" lane](docs/images/scan.png)
+
 This project shares its evaluation discipline with a sibling legal-RAG
 project (ClauseIQ): provenance on every fact and checked, graph-derived eval
 sets, with a different retrieval strategy (graph-guided hybrid retrieval
@@ -49,6 +51,26 @@ The npm pipeline ("DepGraph") runs end to end over 20 date-pinned projects
 - **Answers:** cite `[G#]` graph facts (readable dependency chains) and
   `[A#]` advisory text with osv.dev links. They are checked for advisory
   ids and package versions that aren't in the evidence.
+
+## Results
+
+Every check is derived from the graph or from OSV, not hand-labelled
+(details in [`docs/dataset.md`](docs/dataset.md), outputs in
+[`eval/results/`](eval/results/)):
+
+| What | Result |
+| --- | --- |
+| Our semver matching vs OSV's own affected-version matching | 556/556 agree |
+| Uploaded-lockfile scans vs the graph's exposure (the 20 corpus lockfiles re-scanned as uploads) | 20/20 identical |
+| Router: route / relational pattern on 24 questions | 23/24 / 22/24 (varies slightly between runs) |
+| Answers citing their evidence / grounded (no id or version outside the evidence) | 24/24 / 23/24 |
+| Answers mentioning every expected fact (versions, advisories, fixes) | 24/24 |
+| Advisory search precision@5 (`minilm_windowed`, by package / by vulnerability class) | 0.735 / 0.775 |
+
+The eval set is small (24 questions), so the classifier prompt is never
+tuned against it.
+
+![Asking how to fix CVE-2024-45296 in express@4.17.1: a cited, grounded answer (upgrade express to 4.22.0, or an npm override) and the before/after chains](docs/images/ask.png)
 
 ## Try it
 
